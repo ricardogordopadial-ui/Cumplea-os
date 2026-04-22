@@ -1,0 +1,52 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nuestro Libro de Amor</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="cover-page" id="coverPage">
+        <div class="cover-emoji-layer" id="coverEmojiLayer"></div>
+
+        <div class="cover-content">
+            <div class="cover-photo-wrap" onclick="document.getElementById('coverPhotoInput').click()" title="Pulsa para subir foto de portada">
+                <img id="coverPhoto" class="cover-photo" alt="Foto de portada">
+                <div id="coverPhotoPlaceholder" class="cover-photo-placeholder">
+                    <i class="fas fa-camera"></i>
+                    <span>Añadir foto portada</span>
+                </div>
+            </div>
+            <input type="file" id="coverPhotoInput" accept="image/*" class="hidden-input">
+
+            <h1 class="cover-title">Nuestro Libro de Amor</h1>
+            <p class="cover-subtitle">Una aventura de dos locos</p>
+            <button class="start-button" onclick="startBook()">Aquí comienza nuestra historia</button>
+        </div>
+    </div>
+
+    <div class="book-container" id="bookContainer">
+        <div class="book-content">
+            <div id="monthsContainer"></div>
+        </div>
+
+        <div class="modal" id="mapModal">
+            <div class="modal-content">
+                <span class="close-modal" onclick="closeMapModal()">&times;</span>
+                <h2 class="modal-title"><i class="fas fa-map-marker-alt"></i> Nuestro lugar especial</h2>
+                <p class="special-coords">Latitud: 40.447022° N | Longitud: 3.666234° O</p>
+                <div class="map-container interactive-map-wrap">
+                    <iframe id="placeMapFrame" class="interactive-map-frame" title="Mapa de donde nos conocimos" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+                    <div class="map-heart-pointer">💘</div>
+                </div>
+
+                <p class="special-place-note">Este es el lugar donde nos conocimos <span class="note-heart">💘</span></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
