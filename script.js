@@ -47,10 +47,10 @@ function createDefaultMonth(referenceDate = new Date()) {
         year: referenceDate.getFullYear(),
         phrase: LOVE_PHRASES[Math.floor(Math.random() * LOVE_PHRASES.length)],
         images: ['', '', '', ''],
-        text: '',
+        texts: [''],
         coordinates: [...SPECIAL_PLACE_COORDS],
-        songUrl: '',
-        videoUrl: '',
+        songUrls: [],
+        videoUrls: [],
         showPhotos: true,
         showText: true,
         showMusic: false,
@@ -97,9 +97,10 @@ function persistMonths() {
 }
 
 function saveMonthData(index) {
-    const textArea = document.getElementById(`text-${index}`);
-    if (textArea) {
-        months[index].text = textArea.value;
+    // Guarda todas las textareas del mes
+    const textAreas = document.querySelectorAll(`#month-${index} .text-area`);
+    if (textAreas && textAreas.length) {
+        months[index].texts = Array.from(textAreas).map(t => t.value);
     }
     persistMonths();
 }
@@ -108,12 +109,12 @@ function normalizeMonthData(monthData) {
     return {
         ...monthData,
         images: Array.isArray(monthData.images) ? monthData.images : ['', '', '', ''],
-        text: monthData.text || '',
+        texts: Array.isArray(monthData.texts) ? monthData.texts : (monthData.text ? [monthData.text] : ['']),
         coordinates: Array.isArray(monthData.coordinates) && monthData.coordinates.length === 2
             ? monthData.coordinates
             : [...SPECIAL_PLACE_COORDS],
-        songUrl: monthData.songUrl || '',
-        videoUrl: monthData.videoUrl || '',
+        songUrls: Array.isArray(monthData.songUrls) ? monthData.songUrls : (monthData.songUrl ? [monthData.songUrl] : []),
+        videoUrls: Array.isArray(monthData.videoUrls) ? monthData.videoUrls : (monthData.videoUrl ? [monthData.videoUrl] : []),
         showPhotos: monthData.showPhotos !== false,
         showText: monthData.showText !== false,
         showMusic: monthData.showMusic === true,
@@ -158,72 +159,199 @@ function rerenderCurrentMonth(direction = 'forward') {
     showMonth(currentMonth, direction);
 }
 
-function addMultimediaOption(index) {
-    const select = document.getElementById(`addType-${index}`);
-    if (!select) return;
-    const option = select.value;
-    if (!option) return;
+function closeAllMediaMenus() {
+    document.querySelectorAll('.media-dropdown.open').forEach((dropdown) => {
+        dropdown.classList.remove('open');
+    });
+}
 
-    if (option === 'fotos') months[index].showPhotos = true;
-    if (option === 'texto') months[index].showText = true;
-    if (option === 'musica') months[index].showMusic = true;
-    if (option === 'video') months[index].showVideo = true;
+function toggleMediaMenu(index, action) {
+    const dropdown = document.getElementById(`mediaMenu-${action}-${index}`);
+    if (!dropdown) return;
+
+    const willOpen = !dropdown.classList.contains('open');
+    closeAllMediaMenus();
+
+    if (willOpen) {
+        dropdown.classList.add('open');
+    }
+}
+
+function performMediaAction(index, action, type, target = 'all') {
+    const month = months[index];
+    if (!month) return;
+
+    if (action === 'add') {
+        if (type === 'fotos') {
+            month.showPhotos = true;
+            persistMonths();
+            rerenderCurrentMonth();
+
+            if (target !== 'all') {
+                requestAnimationFrame(() => triggerImageUpload(index, Number(target)));
+            }
+            return;
+        }
+
+        if (type === 'texto') month.showText = true;
+        if (type === 'musica') month.showMusic = true;
+        if (type === 'video') month.showVideo = true;
+
+        persistMonths();
+        rerenderCurrentMonth();
+        return;
+    }
+
+    if (type === 'fotos') {
+        month.showPhotos = true;
+        if (target === 'all') {
+            month.images = ['', '', '', ''];
+            month.showPhotos = false;
+        } else {
+            month.images[Number(target)] = '';
+            if (month.images.every((image) => !image)) {
+                month.showPhotos = false;
+            }
+        }
+    }
+
+    if (type === 'texto') {
+        month.text = '';
+        month.showText = false;
+    }
+
+    if (type === 'musica') {
+        month.songUrl = '';
+        month.showMusic = false;
+    }
+
+    if (type === 'video') {
+        month.videoUrl = '';
+        month.showVideo = false;
+    }
 
     persistMonths();
     rerenderCurrentMonth();
 }
 
-function removeMultimediaOption(index) {
-    const select = document.getElementById(`removeType-${index}`);
-    if (!select) return;
-    const option = select.value;
-    if (!option) return;
+function renderPhotoMenuItems(index, action) {
+    const actionLabel = action === 'add' ? 'Añadir' : 'Quitar';
 
-    if (option === 'fotos') {
-        months[index].images = ['', '', '', ''];
-        months[index].showPhotos = false;
-    }
-    if (option === 'texto') {
-        months[index].text = '';
-        months[index].showText = false;
-    }
-    if (option === 'musica') {
-        months[index].songUrl = '';
-        months[index].showMusic = false;
-    }
-    if (option === 'video') {
-        months[index].videoUrl = '';
-        months[index].showVideo = false;
-    }
+    return `
+        <div class="media-menu-group">
+            <div class="media-menu-label">Fotos</div>
+            <button class="media-menu-item" onclick="performMediaAction(${index}, '${action}', 'fotos', '0')">${actionLabel} foto 1</button>
+            <button class="media-menu-item" onclick="performMediaAction(${index}, '${action}', 'fotos', '1')">${actionLabel} foto 2</button>
+            <button class="media-menu-item" onclick="performMediaAction(${index}, '${action}', 'fotos', '2')">${actionLabel} foto 3</button>
+            <button class="media-menu-item" onclick="performMediaAction(${index}, '${action}', 'fotos', '3')">${actionLabel} foto 4</button>
+            <button class="media-menu-item strong" onclick="performMediaAction(${index}, '${action}', 'fotos', 'all')">${actionLabel} todas</button>
+        </div>
+    `;
+}
 
+function renderMediaDropdown(index, action, icon, label, buttonClass) {
+    const isAdd = action === 'add';
+    // Nueva función para mostrar input de cantidad
+    function renderMediaInput(tipo) {
+        return `<div class=\"media-input-group\" id=\"mediaInputGroup-${action}-${index}-${tipo}\" style=\"margin-top:8px;\">\n<input type=\"number\" min=\"0\" value=\"0\" class=\"media-amount-input\" id=\"mediaAmountInput-${action}-${index}-${tipo}\" style=\"width:60px;\"> \n<button class=\"mini-btn accept-btn\" onclick=\"acceptMediaAmount(${index}, '${action}', '${tipo}')\">Aceptar<\/button>\n<\/div>`;
+    }
+    // Menú con handlers para mostrar el input
+    return `
+        <div class=\"media-dropdown\" id=\"mediaMenu-${action}-${index}\">\n            <button class=\"action-btn ${buttonClass}\" onclick=\"toggleMediaMenu(${index}, '${action}')\">\n                <i class=\"fas fa-${icon}\"></i> ${label}\n            </button>\n            <div class=\"media-menu\">\n                <div class=\"media-menu-group\">\n                    <div class=\"media-menu-label\">Fotos<\/div>\n                    <button class=\"media-menu-item\" onclick=\"showMediaInput(${index}, '${action}', 'fotos')\">${isAdd ? 'Añadir' : 'Quitar'} fotos<\/button>\n                <\/div>\n                <div class=\"media-menu-group\">\n                    <div class=\"media-menu-label\">Otros<\/div>\n                    <button class=\"media-menu-item\" onclick=\"showMediaInput(${index}, '${action}', 'texto')\">${isAdd ? 'Añadir' : 'Quitar'} texto<\/button>\n                    <button class=\"media-menu-item\" onclick=\"showMediaInput(${index}, '${action}', 'musica')\">${isAdd ? 'Añadir' : 'Quitar'} música<\/button>\n                    <button class=\"media-menu-item\" onclick=\"showMediaInput(${index}, '${action}', 'video')\">${isAdd ? 'Añadir' : 'Quitar'} vídeo<\/button>\n                <\/div>\n                <div id=\"mediaInputContainer-${action}-${index}\"><\/div>\n            <\/div>\n        <\/div>\n    `;
+}
+
+// Mostrar input de cantidad
+function showMediaInput(index, action, tipo) {
+    // Oculta otros inputs
+    document.querySelectorAll('.media-input-group').forEach(e => e.remove());
+    const container = document.getElementById(`mediaInputContainer-${action}-${index}`);
+    if (container) {
+        container.innerHTML = `<div class=\"media-input-group\" id=\"mediaInputGroup-${action}-${index}-${tipo}\" style=\"margin-top:8px;\">\n<input type=\"number\" min=\"0\" value=\"0\" class=\"media-amount-input\" id=\"mediaAmountInput-${action}-${index}-${tipo}\" style=\"width:60px;\"> \n<button class=\"mini-btn accept-btn\" onclick=\"acceptMediaAmount(${index}, '${action}', '${tipo}')\">Aceptar<\/button>\n<\/div>`;
+    }
+}
+
+// Acción al aceptar cantidad
+function acceptMediaAmount(index, action, tipo) {
+    const input = document.getElementById(`mediaAmountInput-${action}-${index}-${tipo}`);
+    let cantidad = 0;
+    if (input) cantidad = Math.max(0, parseInt(input.value, 10) || 0);
+    // Ejecuta la acción según tipo y cantidad
+    if (tipo === 'fotos') {
+        if (action === 'add') {
+            months[index].images = Array(Math.max(0, cantidad)).fill('');
+            months[index].showPhotos = cantidad > 0;
+        } else {
+            const actual = months[index].images.length;
+            const nuevo = Math.max(0, actual - cantidad);
+            months[index].images = Array(nuevo).fill('');
+            months[index].showPhotos = nuevo > 0;
+        }
+    } else if (tipo === 'texto') {
+        if (action === 'add') {
+            months[index].texts = Array(Math.max(0, cantidad)).fill('');
+            months[index].showText = cantidad > 0;
+        } else {
+            const actual = Array.isArray(months[index].texts) ? months[index].texts.length : 0;
+            const nuevo = Math.max(0, actual - cantidad);
+            months[index].texts = Array(nuevo).fill('');
+            months[index].showText = nuevo > 0;
+            if (!months[index].showText) months[index].texts = [''];
+        }
+    } else if (tipo === 'musica') {
+        if (action === 'add') {
+            months[index].songUrls = Array(Math.max(0, cantidad)).fill('');
+            months[index].showMusic = cantidad > 0;
+        } else {
+            const actual = Array.isArray(months[index].songUrls) ? months[index].songUrls.length : 0;
+            const nuevo = Math.max(0, actual - cantidad);
+            months[index].songUrls = Array(nuevo).fill('');
+            months[index].showMusic = nuevo > 0;
+        }
+    } else if (tipo === 'video') {
+        if (action === 'add') {
+            months[index].videoUrls = Array(Math.max(0, cantidad)).fill('');
+            months[index].showVideo = cantidad > 0;
+        } else {
+            const actual = Array.isArray(months[index].videoUrls) ? months[index].videoUrls.length : 0;
+            const nuevo = Math.max(0, actual - cantidad);
+            months[index].videoUrls = Array(nuevo).fill('');
+            months[index].showVideo = nuevo > 0;
+        }
+    }
     persistMonths();
     rerenderCurrentMonth();
 }
+
 
 function saveSong(index) {
-    const input = document.getElementById(`songUrl-${index}`);
-    if (!input) return;
-    months[index].songUrl = input.value.trim();
-    persistMonths();
-    rerenderCurrentMonth();
+    // Guarda todos los inputs de canción para el mes
+    const inputs = Array.from(document.querySelectorAll(`#month-${index} .song-input`));
+    if (inputs.length) {
+        months[index].songUrls = inputs.map(i => i.value.trim());
+        persistMonths();
+        rerenderCurrentMonth();
+    }
 }
 
 function saveVideo(index) {
-    const input = document.getElementById(`videoUrl-${index}`);
-    if (!input) return;
-    months[index].videoUrl = input.value.trim();
-    persistMonths();
-    rerenderCurrentMonth();
+    const inputs = Array.from(document.querySelectorAll(`#month-${index} .video-input`));
+    if (inputs.length) {
+        months[index].videoUrls = inputs.map(i => i.value.trim());
+        persistMonths();
+        rerenderCurrentMonth();
+    }
 }
 
 function clearSong(index) {
-    months[index].songUrl = '';
+    months[index].songUrls = [];
+    months[index].showMusic = false;
     persistMonths();
     rerenderCurrentMonth();
 }
 
 function clearVideo(index) {
-    months[index].videoUrl = '';
+    months[index].videoUrls = [];
+    months[index].showVideo = false;
     persistMonths();
     rerenderCurrentMonth();
 }
@@ -274,11 +402,11 @@ function renderMonths() {
                 <div class="content-section photos-section">
                     <h3 class="section-title">📷 Nuestros momentos</h3>
                     <div class="image-gallery">
-                        ${[0, 1, 2, 3].map((i) => `
+                        ${Array.isArray(safeMonth.images) ? safeMonth.images.map((img, i) => `
                             <div class="image-placeholder" onclick="triggerImageUpload(${index}, ${i})">
-                                ${safeMonth.images[i] ? `<img src="${safeMonth.images[i]}" alt="Imagen ${i + 1}">` : '<i class="fas fa-plus" style="font-size:2rem;color:#FF6B35;"></i>'}
+                                ${img ? `<img src="${img}" alt="Imagen ${i + 1}">` : '<i class="fas fa-plus" style="font-size:2rem;color:#FF6B35;"></i>'}
                             </div>
-                        `).join('')}
+                        `).join('') : ''}
                     </div>
                     <input type="file" class="image-input" id="imageInput-${index}" accept="image/*">
                 </div>` : ''}
@@ -286,26 +414,30 @@ function renderMonths() {
                 ${safeMonth.showText ? `
                 <div class="content-section text-section">
                     <h3 class="section-title">💬 Mi historia contigo este mes</h3>
-                    <textarea class="text-area" id="text-${index}" placeholder="Cuéntame qué pasó este mes...">${safeMonth.text || ''}</textarea>
+                    ${Array.isArray(safeMonth.texts) ? safeMonth.texts.map((t, ti) => `
+                        <textarea class="text-area" id="text-${index}-${ti}" placeholder="Cuéntame qué pasó este mes...">${t || ''}</textarea>
+                    `).join('') : `<textarea class="text-area" id="text-${index}-0" placeholder="Cuéntame qué pasó este mes...">${safeMonth.text || ''}</textarea>`}
                 </div>` : ''}
 
                 ${(safeMonth.showMusic || safeMonth.showVideo) ? `
                 <div class="content-section media-content">
                     <h3 class="section-title">🎵 Música y 🎬 Video</h3>
                     ${safeMonth.showMusic ? `
-                    <div class="media-row">
-                        <input type="url" class="media-input" id="songUrl-${index}" placeholder="Enlace de música" value="${escapeAttribute(safeMonth.songUrl)}">
-                        <button class="mini-btn" onclick="saveSong(${index})">Guardar</button>
-                        <button class="mini-btn danger" onclick="clearSong(${index})">Quitar</button>
-                    </div>
-                    ${safeMonth.songUrl ? `<div class="media-preview">${renderMediaPreview(safeMonth.songUrl, 'song')}</div>` : ''}` : ''}
+                        ${Array.isArray(safeMonth.songUrls) ? safeMonth.songUrls.map((s, si) => `
+                            <div class="media-row">
+                                <input type="url" class="media-input song-input" id="songUrl-${index}-${si}" placeholder="Enlace de música" value="${escapeAttribute(s)}">
+                                ${s ? `<div class="media-preview">${renderMediaPreview(s, 'song')}</div>` : ''}
+                            </div>
+                        `).join('') : `<div class="media-row"><input type="url" class="media-input song-input" id="songUrl-${index}-0" value="${escapeAttribute(safeMonth.songUrl)}"></div>`}
+                    ` : ''}
                     ${safeMonth.showVideo ? `
-                    <div class="media-row">
-                        <input type="url" class="media-input" id="videoUrl-${index}" placeholder="Enlace de video" value="${escapeAttribute(safeMonth.videoUrl)}">
-                        <button class="mini-btn" onclick="saveVideo(${index})">Guardar</button>
-                        <button class="mini-btn danger" onclick="clearVideo(${index})">Quitar</button>
-                    </div>
-                    ${safeMonth.videoUrl ? `<div class="media-preview">${renderMediaPreview(safeMonth.videoUrl, 'video')}</div>` : ''}` : ''}
+                        ${Array.isArray(safeMonth.videoUrls) ? safeMonth.videoUrls.map((v, vi) => `
+                            <div class="media-row">
+                                <input type="url" class="media-input video-input" id="videoUrl-${index}-${vi}" placeholder="Enlace de video" value="${escapeAttribute(v)}">
+                                ${v ? `<div class="media-preview">${renderMediaPreview(v, 'video')}</div>` : ''}
+                            </div>
+                        `).join('') : `<div class="media-row"><input type="url" class="media-input video-input" id="videoUrl-${index}-0" value="${escapeAttribute(safeMonth.videoUrl)}"></div>`}
+                    ` : ''}
                 </div>` : ''}
 
                 ${(!safeMonth.showPhotos && !safeMonth.showText && !safeMonth.showMusic && !safeMonth.showVideo) ? `
@@ -325,24 +457,8 @@ function renderMonths() {
                 <div class="action-buttons">
                     <button class="action-btn cover" onclick="goToCover()"><i class="fas fa-book-open"></i> Ir a portada</button>
                     <button class="action-btn save" onclick="saveCurrentMonth()"><i class="fas fa-floppy-disk"></i> Guardar</button>
-                    <div class="multi-tool">
-                        <button class="action-btn media" onclick="addMultimediaOption(${index})"><i class="fas fa-plus"></i> Añadir multimedia</button>
-                        <select class="media-select" id="addType-${index}">
-                            <option value="musica">musica</option>
-                            <option value="texto">texto</option>
-                            <option value="video">videos</option>
-                            <option value="fotos">fotos</option>
-                        </select>
-                    </div>
-                    <div class="multi-tool">
-                        <button class="action-btn neutral" onclick="removeMultimediaOption(${index})"><i class="fas fa-minus"></i> Quitar multimedia</button>
-                        <select class="media-select" id="removeType-${index}">
-                            <option value="fotos">fotos</option>
-                            <option value="texto">texto</option>
-                            <option value="video">video</option>
-                            <option value="musica">musica</option>
-                        </select>
-                    </div>
+                    ${renderMediaDropdown(index, 'add', 'plus', 'Añadir multimedia', 'media')}
+                    ${renderMediaDropdown(index, 'remove', 'minus', 'Quitar multimedia', 'neutral')}
                     <button class="action-btn" onclick="addMonth()"><i class="fas fa-plus"></i> Añadir mes</button>
                     <button class="action-btn delete" onclick="deleteMonth(${index})" ${months.length <= 1 ? 'disabled' : ''}><i class="fas fa-trash"></i> Eliminar</button>
                 </div>
@@ -351,15 +467,61 @@ function renderMonths() {
 
         container.appendChild(monthPage);
 
-        const textArea = monthPage.querySelector(`#text-${index}`);
-        if (textArea) {
-            textArea.addEventListener('change', () => saveMonthData(index));
-            textArea.addEventListener('blur', () => saveMonthData(index));
+        // textareas: guardar cada una
+        const textAreas = monthPage.querySelectorAll('.text-area');
+        if (textAreas && textAreas.length) {
+            textAreas.forEach((ta) => {
+                ta.addEventListener('change', () => saveMonthData(index));
+                ta.addEventListener('blur', () => saveMonthData(index));
+            });
         }
 
+        // image input handler
         const imageInput = monthPage.querySelector(`#imageInput-${index}`);
         if (imageInput) {
             imageInput.addEventListener('change', (e) => handleImageUpload(e, index));
+        }
+
+        // song inputs
+        const songInputs = monthPage.querySelectorAll('.song-input');
+        if (songInputs && songInputs.length) {
+            songInputs.forEach((inp) => {
+                inp.addEventListener('change', () => {
+                    const parts = inp.id.split('-');
+                    const si = Number(parts[2]);
+                    months[index].songUrls[si] = inp.value.trim();
+                    persistMonths();
+                    rerenderCurrentMonth();
+                });
+                inp.addEventListener('blur', () => {
+                    const parts = inp.id.split('-');
+                    const si = Number(parts[2]);
+                    months[index].songUrls[si] = inp.value.trim();
+                    persistMonths();
+                    rerenderCurrentMonth();
+                });
+            });
+        }
+
+        // video inputs
+        const videoInputs = monthPage.querySelectorAll('.video-input');
+        if (videoInputs && videoInputs.length) {
+            videoInputs.forEach((inp) => {
+                inp.addEventListener('change', () => {
+                    const parts = inp.id.split('-');
+                    const vi = Number(parts[2]);
+                    months[index].videoUrls[vi] = inp.value.trim();
+                    persistMonths();
+                    rerenderCurrentMonth();
+                });
+                inp.addEventListener('blur', () => {
+                    const parts = inp.id.split('-');
+                    const vi = Number(parts[2]);
+                    months[index].videoUrls[vi] = inp.value.trim();
+                    persistMonths();
+                    rerenderCurrentMonth();
+                });
+            });
         }
     });
 }
@@ -663,6 +825,12 @@ function loadCoverPhoto() {
         reader.readAsDataURL(file);
     });
 }
+
+document.addEventListener('click', (event) => {
+    if (!event.target.closest('.media-dropdown')) {
+        closeAllMediaMenus();
+    }
+});
 
 loadBook();
 generateCoverEmojis();
