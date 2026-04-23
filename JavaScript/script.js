@@ -1,4 +1,4 @@
-﻿let currentMonth = 0;
+let currentMonth = 0;
 let months = [];
 
 const BOOK_STORAGE_KEY = 'bookMonths';
@@ -69,7 +69,7 @@ function initializeMonths() {
     let phraseIndex = 0;
 
     while (currentDate <= endDate) {
-        months.push({
+        const monthData = {
             id: months.length,
             month: monthNames[currentDate.getMonth()],
             year: currentDate.getFullYear(),
@@ -83,8 +83,15 @@ function initializeMonths() {
             showText: true,
             showMusic: false,
             showVideo: false
-        });
+        };
 
+        // Para Enero 2023: usar solo 1 foto y agregar el texto especial
+        if (monthNames[currentDate.getMonth()] === 'Enero' && currentDate.getFullYear() === 2023) {
+            monthData.images = [''];
+            monthData.text = 'Amor mío, ese mes fue el que cambió mi vida para siempre 💘. El día 28 entré por la puerta de ese pub sin saber que mi destino estaba esperándome allí. Y entonces te vi, reina mía, y me quedé sin palabras, sin aire, sin poder pensar en nada más que en ti 😍. Recuerdo que al irme solo tenía una cosa en la mente: volverte loca, conquistarte y hacerte mi novia, bb, porque fue un flechazo a primera vista 💕. Mi corazón se entregó completamente en ese instante ❤️✨. Eres lo mejor que me ha pasado, amor 🥰.';
+        }
+
+        months.push(monthData);
         currentDate.setMonth(currentDate.getMonth() + 1);
         phraseIndex += 1;
     }
@@ -376,9 +383,16 @@ function renderMonths() {
         const isFirst = index === 0;
         const isLast = index === months.length - 1;
 
+        // Verificar si es enero 2023 para layout especial
+        const isJanuary2023 = safeMonth.month === 'Enero' && safeMonth.year === 2023;
+
         const monthPage = document.createElement('div');
         monthPage.className = `month-page ${index === currentMonth ? 'active' : ''}`;
         monthPage.id = `month-${index}`;
+
+        // Para enero 2023: usar grid de dos columnas normales
+        const gridClass = '';
+        const galleryClass = isJanuary2023 ? 'single-image' : '';
 
         monthPage.innerHTML = `
             <div class="heart-pulse-bg" aria-hidden="true">
@@ -397,16 +411,26 @@ function renderMonths() {
                 </button>` : ''}
             </div>
 
-            <div class="month-content">
+            <div class="month-content ${gridClass}">
                 ${safeMonth.showPhotos ? `
                 <div class="content-section photos-section">
                     <h3 class="section-title">📷 Nuestros momentos</h3>
-                    <div class="image-gallery">
-                        ${Array.isArray(safeMonth.images) ? safeMonth.images.map((img, i) => `
-                            <div class="image-placeholder" onclick="triggerImageUpload(${index}, ${i})">
-                                ${img ? `<img src="${img}" alt="Imagen ${i + 1}">` : '<i class="fas fa-plus" style="font-size:2rem;color:#FF6B35;"></i>'}
-                            </div>
-                        `).join('') : ''}
+                    <div class="image-gallery ${galleryClass}">
+                        ${Array.isArray(safeMonth.images) ? safeMonth.images.map((img, i) => {
+                            // Para Enero 2023: solo mostrar imágenes que existan o la primera posición vacía
+                            if (isJanuary2023) {
+                                if (img) {
+                                    return `<div class="image-placeholder" onclick="triggerImageUpload(${index}, ${i})"><img src="${img}" alt="Imagen ${i + 1}"></div>`;
+                                } else if (i === 0) {
+                                    return `<div class="image-placeholder" onclick="triggerImageUpload(${index}, ${i})"><i class="fas fa-plus" style="font-size:2rem;color:#FF6B35;"></i></div>`;
+                                }
+                                return '';
+                            } else {
+                                return `<div class="image-placeholder" onclick="triggerImageUpload(${index}, ${i})">
+                                    ${img ? `<img src="${img}" alt="Imagen ${i + 1}">` : '<i class="fas fa-plus" style="font-size:2rem;color:#FF6B35;"></i>'}
+                                </div>`;
+                            }
+                        }).join('') : ''}
                     </div>
                     <input type="file" class="image-input" id="imageInput-${index}" accept="image/*">
                 </div>` : ''}
@@ -414,9 +438,11 @@ function renderMonths() {
                 ${safeMonth.showText ? `
                 <div class="content-section text-section">
                     <h3 class="section-title">💬 Mi historia contigo este mes</h3>
-                    ${Array.isArray(safeMonth.texts) ? safeMonth.texts.map((t, ti) => `
-                        <textarea class="text-area" id="text-${index}-${ti}" placeholder="Cuéntame qué pasó este mes...">${t || ''}</textarea>
-                    `).join('') : `<textarea class="text-area" id="text-${index}-0" placeholder="Cuéntame qué pasó este mes...">${safeMonth.text || ''}</textarea>`}
+                    ${Array.isArray(safeMonth.texts) ? safeMonth.texts.map((t, ti) => {
+                        const defaultText = isJanuary2023 ? 'Amor mío, ese mes fue el que cambió mi vida para siempre 💘. El día 28 entré por la puerta de ese pub sin saber que mi destino estaba esperándome allí. Y entonces te vi, reina mía, y me quedé sin palabras, sin aire, sin poder pensar en nada más que en ti 😍. Recuerdo que al irme solo tenía una cosa en la mente: volverte loca, conquistarte y hacerte mi novia, bb, porque fue un flechazo a primera vista 💕. Mi corazón se entregó completamente en ese instante ❤️✨. Eres lo mejor que me ha pasado, amor 🥰.' : '';
+                        const textContent = t || defaultText;
+                        return `<textarea class="text-area" id="text-${index}-${ti}" placeholder="Cuéntame qué pasó este mes...">${textContent}</textarea>`;
+                    }).join('') : `<textarea class="text-area" id="text-${index}-0" placeholder="Cuéntame qué pasó este mes...">${safeMonth.text || (isJanuary2023 ? 'Amor mío, ese mes fue el que cambió mi vida para siempre 💘. El día 28 entré por la puerta de ese pub sin saber que mi destino estaba esperándome allí. Y entonces te vi, reina mía, y me quedé sin palabras, sin aire, sin poder pensar en nada más que en ti 😍. Recuerdo que al irme solo tenía una cosa en la mente: volverte loca, conquistarte y hacerte mi novia, bb, porque fue un flechazo a primera vista 💕. Mi corazón se entregó completamente en ese instante ❤️✨. Eres lo mejor que me ha pasado, amor 🥰.' : '')}</textarea>`}
                 </div>` : ''}
 
                 ${(safeMonth.showMusic || safeMonth.showVideo) ? `
@@ -758,6 +784,16 @@ function loadBook() {
     if (!Array.isArray(months) || months.length === 0) {
         initializeMonths();
     }
+
+    // Actualizar Enero 2023 siempre con el nuevo texto romántico
+    const enero2023Index = months.findIndex(m => m.month === 'Enero' && m.year === 2023);
+    if (enero2023Index !== -1) {
+        const romanticText = 'Amor mío, ese mes fue el que cambió mi vida para siempre 💘. El día 28 entré por la puerta de ese pub sin saber que mi destino estaba esperándome allí. Y entonces te vi, reina mía, y me quedé sin palabras, sin aire, sin poder pensar en nada más que en ti 😍. Recuerdo que al irme solo tenía una cosa en la mente: volverte loca, conquistarte y hacerte mi novia, bb, porque fue un flechazo a primera vista 💕. Mi corazón se entregó completamente en ese instante ❤️✨. Eres lo mejor que me ha pasado, amor 🥰.';
+        months[enero2023Index].text = romanticText;
+        months[enero2023Index].texts = [romanticText];
+        persistMonths();
+    }
+
     months = months.map((monthData) => normalizeMonthData(monthData));
 
     renderMonths();
@@ -836,5 +872,3 @@ loadBook();
 generateCoverEmojis();
 loadCoverPhoto();
 registerPageNavigationInputs();
-
-
