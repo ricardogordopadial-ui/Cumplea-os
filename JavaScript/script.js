@@ -49,6 +49,42 @@ function adjustCoverPhotoZoom(delta, event) {
     applyCoverPhotoZoom();
 }
 
+function startCoverResize(event) {
+    if (event) {
+        event.preventDefault?.();
+        event.stopPropagation?.();
+    }
+    const img = document.getElementById('coverPhoto');
+    if (!img) return;
+
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const startZoom = getCoverPhotoZoom();
+
+    try {
+        event.target?.setPointerCapture?.(event.pointerId);
+    } catch {
+        // ignore
+    }
+
+    const onMove = (e) => {
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        const delta = (dx + dy) / 360;
+        const next = clampNumber(startZoom + delta, 0.6, 2.2);
+        localStorage.setItem(COVER_ZOOM_KEY, String(next));
+        img.style.transform = `scale(${next})`;
+    };
+
+    const onUp = () => {
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+    };
+
+    window.addEventListener('pointermove', onMove, { passive: true });
+    window.addEventListener('pointerup', onUp, { once: true });
+}
+
 function getAudioKey(monthId, songIndex) {
     return `audio:${monthId}:${songIndex}`;
 }
@@ -240,10 +276,10 @@ function initSpotifyPlayers(monthPage) {
 }
 
 function autoplaySpotifyPlayersOnPage(monthPage) {
-    const cards = monthPage.querySelectorAll('.spotify-card[data-autoplay="true"]');
-    cards.forEach((card) => {
+    const cards = Array.from(monthPage.querySelectorAll('.spotify-card'));
+    for (const card of cards) {
         const audio = card.querySelector('audio');
-        if (!audio || !audio.src) return;
+        if (!audio || !audio.src) continue;
         if (!audio.paused) return;
 
         const tryAutoplay = async () => {
@@ -259,7 +295,8 @@ function autoplaySpotifyPlayersOnPage(monthPage) {
         } else {
             audio.addEventListener('loadedmetadata', tryAutoplay, { once: true });
         }
-    });
+        return;
+    }
 }
 
 async function handleAudioUpload(event, monthIndex, songIndex) {
@@ -561,6 +598,7 @@ function createDefaultMonth(referenceDate = new Date()) {
         songUrls: [],
         songMeta: [],
         videoUrls: [],
+        videoHeights: [],
         showPhotos: true,
         showText: true,
         showMusic: false,
@@ -638,6 +676,7 @@ function normalizeMonthData(monthData) {
         songUrls: Array.isArray(monthData.songUrls) ? monthData.songUrls : (monthData.songUrl ? [monthData.songUrl] : []),
         songMeta: Array.isArray(monthData.songMeta) ? monthData.songMeta : [],
         videoUrls: Array.isArray(monthData.videoUrls) ? monthData.videoUrls : (monthData.videoUrl ? [monthData.videoUrl] : []),
+        videoHeights: Array.isArray(monthData.videoHeights) ? monthData.videoHeights : [],
         showPhotos: monthData.showPhotos !== false,
         showText: monthData.showText !== false,
         showMusic: monthData.showMusic === true,
@@ -670,6 +709,15 @@ function normalizeMonthData(monthData) {
         };
     });
 
+    // Alinear tamaños con vídeos
+    if (!Array.isArray(normalized.videoHeights)) normalized.videoHeights = [];
+    if (normalized.videoHeights.length < normalized.videoUrls.length) {
+        normalized.videoHeights = normalized.videoHeights.concat(Array(normalized.videoUrls.length - normalized.videoHeights.length).fill(170));
+    } else if (normalized.videoHeights.length > normalized.videoUrls.length) {
+        normalized.videoHeights = normalized.videoHeights.slice(0, normalized.videoUrls.length);
+    }
+    normalized.videoHeights = normalized.videoHeights.map((h) => clampNumber(h, 120, 560));
+
     return normalized;
 }
 
@@ -691,6 +739,28 @@ function getYouTubeEmbedUrl(url) {
     const embedMatch = trimmed.match(/youtube\.com\/embed\/([^?&/]+)/i);
     if (embedMatch) return `https://www.youtube.com/embed/${embedMatch[1]}`;
     return '';
+}
+
+function getVideoEmbedHeight(month, videoIndex) {
+    const fallback = 170;
+    if (!month) return fallback;
+    const value = Array.isArray(month.videoHeights) ? month.videoHeights[videoIndex] : null;
+    return clampNumber(value ?? fallback, 120, 560);
+}
+
+function renderVideoPreview(url, month, monthIndex, videoIndex) {
+    if (!url) return '';
+    const ytEmbed = getYouTubeEmbedUrl(url);
+    if (ytEmbed) {
+        const height = getVideoEmbedHeight(month, videoIndex);
+        return `
+            <div class="video-embed-wrap" style="height:${Math.round(height)}px">
+                <iframe class="media-embed video-embed" src="${ytEmbed}" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                <div class="media-resize-handle" onpointerdown="startVideoResize(${monthIndex}, ${videoIndex}, event)" aria-hidden="true" title="Arrastra para cambiar tamaño"></div>
+            </div>
+        `;
+    }
+    return `<a class="media-link" href="${escapeAttribute(url)}" target="_blank" rel="noopener noreferrer">Abrir video</a>`;
 }
 
 function renderMediaPreview(url, type) {
@@ -732,6 +802,50 @@ function setSongMetaField(monthIndex, songIndex, field, value) {
     }
 }
 
+function startSongCoverResize(monthIndex, songIndex, event) {
+    if (event) {
+        event.preventDefault?.();
+        event.stopPropagation?.();
+    }
+
+    const month = months[monthIndex];
+    if (!month) return;
+    if (!Array.isArray(month.songMeta)) month.songMeta = [];
+    if (!month.songMeta[songIndex]) month.songMeta[songIndex] = { title: '', artist: '', cover: '', coverZoom: 1 };
+
+    const cover = event?.target?.closest?.('.spotify-cover');
+    const img = cover?.querySelector?.('img.zoomable-img');
+    if (!img) return;
+
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const startZoom = clampNumber(month.songMeta[songIndex].coverZoom || 1, 0.6, 2.2);
+
+    try {
+        event.target?.setPointerCapture?.(event.pointerId);
+    } catch {
+        // ignore
+    }
+
+    const onMove = (e) => {
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        const delta = (dx + dy) / 360;
+        const next = clampNumber(startZoom + delta, 0.6, 2.2);
+        month.songMeta[songIndex].coverZoom = next;
+        img.style.transform = `scale(${next})`;
+    };
+
+    const onUp = () => {
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+        persistMonths();
+    };
+
+    window.addEventListener('pointermove', onMove, { passive: true });
+    window.addEventListener('pointerup', onUp, { once: true });
+}
+
 function adjustPhotoZoom(monthIndex, imageIndex, delta, event) {
     if (event) {
         event.preventDefault?.();
@@ -743,6 +857,49 @@ function adjustPhotoZoom(monthIndex, imageIndex, delta, event) {
     month.imageZooms[imageIndex] = clampNumber((month.imageZooms[imageIndex] || 1) + delta, 0.6, 2.2);
     persistMonths();
     rerenderCurrentMonth();
+}
+
+function startImageResize(monthIndex, imageIndex, event) {
+    if (event) {
+        event.preventDefault?.();
+        event.stopPropagation?.();
+    }
+
+    const month = months[monthIndex];
+    if (!month) return;
+    if (!Array.isArray(month.imageZooms)) month.imageZooms = [];
+
+    const placeholder = event?.target?.closest?.('.image-placeholder');
+    const img = placeholder?.querySelector?.('img.zoomable-img');
+    if (!img) return;
+
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const startZoom = clampNumber(month.imageZooms[imageIndex] || 1, 0.6, 2.2);
+
+    try {
+        event.target?.setPointerCapture?.(event.pointerId);
+    } catch {
+        // ignore
+    }
+
+    const onMove = (e) => {
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
+        const delta = (dx + dy) / 360;
+        const next = clampNumber(startZoom + delta, 0.6, 2.2);
+        month.imageZooms[imageIndex] = next;
+        img.style.transform = `scale(${next})`;
+    };
+
+    const onUp = () => {
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+        persistMonths();
+    };
+
+    window.addEventListener('pointermove', onMove, { passive: true });
+    window.addEventListener('pointerup', onUp, { once: true });
 }
 
 function removePhoto(monthIndex, imageIndex, event) {
@@ -796,6 +953,35 @@ function triggerAudioUpload(monthIndex, songIndex, event) {
     input.click();
 }
 
+function triggerSongCoverUpload(monthIndex, songIndex, event) {
+    if (event) {
+        event.preventDefault?.();
+        event.stopPropagation?.();
+    }
+    const input = document.getElementById(`coverInput-${monthIndex}-${songIndex}`);
+    if (!input) return;
+    input.click();
+}
+
+function handleCoverUpload(event, monthIndex, songIndex) {
+    const file = event?.target?.files?.[0];
+    if (!file) return;
+
+    const month = months[monthIndex];
+    if (!month) return;
+    if (!Array.isArray(month.songMeta)) month.songMeta = [];
+    if (!month.songMeta[songIndex]) month.songMeta[songIndex] = { title: '', artist: '', cover: '', coverZoom: 1 };
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        month.songMeta[songIndex].cover = String(e.target?.result || '');
+        month.songMeta[songIndex].coverZoom = 1;
+        persistMonths();
+        rerenderCurrentMonth();
+    };
+    reader.readAsDataURL(file);
+}
+
 function removeVideoEntry(monthIndex, videoIndex, event) {
     if (event) {
         event.preventDefault?.();
@@ -807,12 +993,55 @@ function removeVideoEntry(monthIndex, videoIndex, event) {
     if (videoIndex < 0 || videoIndex >= month.videoUrls.length) return;
 
     month.videoUrls.splice(videoIndex, 1);
+    if (Array.isArray(month.videoHeights)) {
+        month.videoHeights.splice(videoIndex, 1);
+    }
     if (month.videoUrls.length === 0) {
         month.showVideo = false;
     }
 
     persistMonths();
     rerenderCurrentMonth();
+}
+
+function startVideoResize(monthIndex, videoIndex, event) {
+    if (event) {
+        event.preventDefault?.();
+        event.stopPropagation?.();
+    }
+
+    const month = months[monthIndex];
+    if (!month) return;
+    if (!Array.isArray(month.videoHeights)) month.videoHeights = [];
+
+    const wrap = event?.target?.closest?.('.video-embed-wrap');
+    if (!wrap) return;
+
+    const startY = event.clientY;
+    const startHeight = wrap.getBoundingClientRect().height;
+    const baseHeight = Number.isFinite(startHeight) ? startHeight : 170;
+
+    try {
+        event.target?.setPointerCapture?.(event.pointerId);
+    } catch {
+        // ignore
+    }
+
+    const onMove = (e) => {
+        const dy = e.clientY - startY;
+        const next = clampNumber(baseHeight + dy, 120, 560);
+        wrap.style.height = `${Math.round(next)}px`;
+        month.videoHeights[videoIndex] = Math.round(next);
+    };
+
+    const onUp = () => {
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', onUp);
+        persistMonths();
+    };
+
+    window.addEventListener('pointermove', onMove, { passive: true });
+    window.addEventListener('pointerup', onUp, { once: true });
 }
 
 async function removeSongEntry(monthIndex, songIndex, event) {
@@ -1069,11 +1298,14 @@ function acceptMediaAmount(index, action, tipo) {
             const extra = Math.max(0, cantidad);
             const currentVideos = Array.isArray(months[index].videoUrls) ? months[index].videoUrls : [];
             months[index].videoUrls = currentVideos.concat(Array(extra).fill(''));
+            const currentHeights = Array.isArray(months[index].videoHeights) ? months[index].videoHeights : [];
+            months[index].videoHeights = currentHeights.concat(Array(extra).fill(170));
             months[index].showVideo = months[index].videoUrls.length > 0;
         } else {
             const actual = Array.isArray(months[index].videoUrls) ? months[index].videoUrls.length : 0;
             const nuevo = Math.max(0, actual - cantidad);
             months[index].videoUrls = (Array.isArray(months[index].videoUrls) ? months[index].videoUrls : []).slice(0, nuevo);
+            months[index].videoHeights = (Array.isArray(months[index].videoHeights) ? months[index].videoHeights : []).slice(0, nuevo);
             months[index].showVideo = months[index].videoUrls.length > 0;
         }
     }
@@ -1110,6 +1342,7 @@ function clearSong(index) {
 
 function clearVideo(index) {
     months[index].videoUrls = [];
+    months[index].videoHeights = [];
     months[index].showVideo = false;
     persistMonths();
     rerenderCurrentMonth();
@@ -1124,6 +1357,72 @@ function getPhraseWithEmoji(phrase, emoji) {
     const safePhrase = (typeof phrase === 'string' ? phrase : '').trim();
     const safeEmoji = (typeof emoji === 'string' ? emoji : '').trim();
     return `${safePhrase} ${safeEmoji}`.trim();
+}
+
+function decoratePhotoPlaceholders(monthPage, monthIndex) {
+    const placeholders = monthPage.querySelectorAll('.image-placeholder');
+    placeholders.forEach((placeholder) => {
+        // Quitar controles + / - antiguos
+        placeholder.querySelectorAll('.media-zoom-controls').forEach((el) => el.remove());
+        placeholder.querySelectorAll('i.fas.fa-plus').forEach((el) => el.remove());
+
+        const onclick = placeholder.getAttribute('onclick') || '';
+        const match = onclick.match(/triggerImageUpload\((\d+)\s*,\s*(\d+)\)/);
+        const imageIndex = match ? Number(match[2]) : Number.NaN;
+        if (!Number.isFinite(imageIndex)) return;
+
+        const img = placeholder.querySelector('img');
+        if (img) {
+            if (!placeholder.querySelector('.media-resize-handle')) {
+                const handle = document.createElement('div');
+                handle.className = 'media-resize-handle';
+                handle.setAttribute('aria-hidden', 'true');
+                handle.title = 'Arrastra para cambiar tamaño';
+                handle.addEventListener('pointerdown', (e) => startImageResize(monthIndex, imageIndex, e));
+                placeholder.appendChild(handle);
+            }
+            return;
+        }
+
+        if (!placeholder.querySelector('.image-empty-icon')) {
+            const empty = document.createElement('div');
+            empty.className = 'image-empty-icon';
+            empty.setAttribute('aria-hidden', 'true');
+            empty.innerHTML = '<i class="fas fa-camera"></i><span>Añadir foto</span>';
+            placeholder.appendChild(empty);
+        }
+    });
+}
+
+function decorateVideoPreviews(monthPage, monthIndex) {
+    const month = months[monthIndex];
+    if (!month) return;
+
+    const items = monthPage.querySelectorAll('.media-dotted-video .media-item');
+    items.forEach((item) => {
+        const input = item.querySelector('input.video-input');
+        const iframe = item.querySelector('iframe.video-embed');
+        if (!input || !iframe) return;
+        if (iframe.closest('.video-embed-wrap')) return;
+
+        const parts = String(input.id || '').split('-');
+        const videoIndex = Number(parts[2]);
+        if (!Number.isFinite(videoIndex)) return;
+
+        const wrap = document.createElement('div');
+        wrap.className = 'video-embed-wrap';
+        wrap.style.height = `${Math.round(getVideoEmbedHeight(month, videoIndex))}px`;
+
+        iframe.parentNode.insertBefore(wrap, iframe);
+        wrap.appendChild(iframe);
+
+        const handle = document.createElement('div');
+        handle.className = 'media-resize-handle';
+        handle.setAttribute('aria-hidden', 'true');
+        handle.title = 'Arrastra para cambiar tamaño';
+        handle.addEventListener('pointerdown', (e) => startVideoResize(monthIndex, videoIndex, e));
+        wrap.appendChild(handle);
+    });
 }
 
 function renderMonths() {
@@ -1198,7 +1497,7 @@ function renderMonths() {
                     ` : ''}
 
                     ${safeMonth.showMusic ? `
-                        <h3 class="section-title"><img class="section-title-icon" src="assets/music-note.svg" alt="" aria-hidden="true"> Música</h3>
+                        <h3 class="section-title">🎵 Música 🖼️</h3>
                         <div class="media-dotted media-dotted-music">
                             ${(Array.isArray(safeMonth.songUrls) ? safeMonth.songUrls : []).map((_, si) => `
                                 ${(() => {
@@ -1209,11 +1508,11 @@ function renderMonths() {
 
                                     return `
                                 <div class="media-item spotify-wrapper">
-                                    <div class="spotify-card" data-autoplay="${(isJuly2023 && si === 0) ? 'true' : 'false'}">
+                                    <div class="spotify-card" data-autoplay="${si === 0 ? 'true' : 'false'}">
                                         <button class="media-x-btn spotify-x" type="button" onclick="removeSongEntry(${index}, ${si}, event)" aria-label="Eliminar música"><i class="fas fa-trash"></i></button>
 
                                         <div class="spotify-cover" onclick="triggerAudioUpload(${index}, ${si}, event)" title="Pulsa para elegir audio">
-                                            ${isFixedJulyTrack ? `<img class="zoomable-img" src="${JULY_2023_DEFAULT_TRACK.coverSrc}" alt="Portada de ${escapeAttribute(JULY_2023_DEFAULT_TRACK.title)}">` : `<div class="spotify-cover-placeholder" aria-hidden="true"><img class="spotify-note-img" src="assets/music-note.svg" alt=""></div>`}
+                                            ${isFixedJulyTrack ? `<img class="zoomable-img" src="${JULY_2023_DEFAULT_TRACK.coverSrc}" alt="Portada de ${escapeAttribute(JULY_2023_DEFAULT_TRACK.title)}">` : `<div class="spotify-cover-placeholder" aria-hidden="true"><img class="spotify-note-img" src="assets/audio-upload.svg" alt=""></div>`}
                                         </div>
 
                                         <div class="spotify-meta">
@@ -1310,6 +1609,8 @@ function renderMonths() {
         `;
 
         container.appendChild(monthPage);
+        decoratePhotoPlaceholders(monthPage, index);
+        decorateVideoPreviews(monthPage, index);
 
         // textareas: guardar cada una
         const textAreas = monthPage.querySelectorAll('.text-area');

@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nuestra historia de amor</title>
+    <title>👸🏾 Cumple de la reina</title>
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="CSS/styles.css">
 </head>
@@ -15,10 +16,7 @@
         <div class="cover-content">
             <div class="cover-photo-wrap" onclick="document.getElementById('coverPhotoInput').click()" title="Pulsa para subir foto de portada">
                 <img id="coverPhoto" class="cover-photo" alt="Foto de portada">
-                <div class="media-zoom-controls cover-zoom-controls" aria-label="Tamaño portada">
-                    <button class="media-zoom-btn" type="button" onclick="adjustCoverPhotoZoom(-0.1, event)" aria-label="Hacer más pequeña"><i class="fas fa-minus"></i></button>
-                    <button class="media-zoom-btn" type="button" onclick="adjustCoverPhotoZoom(0.1, event)" aria-label="Hacer más grande"><i class="fas fa-plus"></i></button>
-                </div>
+                <div class="media-resize-handle cover-resize-handle" onpointerdown="startCoverResize(event)" aria-hidden="true" title="Arrastra para ajustar tamaño"></div>
                 <div id="coverPhotoPlaceholder" class="cover-photo-placeholder">
                     <i class="fas fa-camera"></i>
                     <span>Añadir foto portada</span>
@@ -26,7 +24,7 @@
             </div>
             <input type="file" id="coverPhotoInput" accept="image/*" class="hidden-input">
 
-            <h1 class="cover-title">Nuestra historia de amor</h1>
+            <h1 class="cover-title">Cumple de la reina</h1>
             <div class="birthday-typed" aria-label="Feliz cumpleaños amor, reina">
                 <span id="birthdayTyped" class="birthday-typed-text"></span><span class="birthday-queen" aria-hidden="true">👸🏾</span><span class="typed-cursor" aria-hidden="true">|</span>
             </div>
