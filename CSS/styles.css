@@ -1385,6 +1385,32 @@ body {
     margin-bottom: 10px;
 }
 
+.audio-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.audio-file-input {
+    width: 100%;
+    min-width: 0;
+    padding: 8px;
+    border: 2px solid #c8b6ef;
+    border-radius: 8px;
+    background: #fff;
+    font-size: 0.9rem;
+}
+
+.audio-player {
+    width: 100%;
+}
+
+.hidden-audio {
+    display: none;
+}
+
 .media-item:last-child {
     margin-bottom: 0;
 }

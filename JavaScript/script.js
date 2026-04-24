@@ -5,6 +5,146 @@ const BOOK_STORAGE_KEY = 'bookMonths';
 const COVER_STORAGE_KEY = 'bookCoverPhoto';
 const DEFAULT_COVER_PHOTO_URL = 'https://copilot.microsoft.com/th/id/BCO.726196b2-9ae5-41a1-a677-c75ba5095975.png';
 const LEGACY_DEFAULT_COVER_PHOTO_URL = 'assets/cover-square.png';
+
+const AUDIO_DB_NAME = 'bookAudioFiles';
+const AUDIO_DB_STORE = 'files';
+let audioDbPromise = null;
+const audioObjectUrlCache = new Map();
+
+function getAudioKey(monthId, songIndex) {
+    return `audio:${monthId}:${songIndex}`;
+}
+
+function openAudioDb() {
+    if (audioDbPromise) return audioDbPromise;
+
+    audioDbPromise = new Promise((resolve, reject) => {
+        const request = indexedDB.open(AUDIO_DB_NAME, 1);
+        request.onupgradeneeded = () => {
+            const db = request.result;
+            if (!db.objectStoreNames.contains(AUDIO_DB_STORE)) {
+                db.createObjectStore(AUDIO_DB_STORE);
+            }
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+
+    return audioDbPromise;
+}
+
+async function audioDbPut(key, blob) {
+    const db = await openAudioDb();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(AUDIO_DB_STORE, 'readwrite');
+        const store = tx.objectStore(AUDIO_DB_STORE);
+        store.put(blob, key);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+    });
+}
+
+async function audioDbGet(key) {
+    const db = await openAudioDb();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(AUDIO_DB_STORE, 'readonly');
+        const store = tx.objectStore(AUDIO_DB_STORE);
+        const req = store.get(key);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => reject(req.error);
+    });
+}
+
+async function audioDbDelete(key) {
+    const db = await openAudioDb();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(AUDIO_DB_STORE, 'readwrite');
+        const store = tx.objectStore(AUDIO_DB_STORE);
+        store.delete(key);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+    });
+}
+
+function revokeAudioObjectUrl(key) {
+    const url = audioObjectUrlCache.get(key);
+    if (!url) return;
+    URL.revokeObjectURL(url);
+    audioObjectUrlCache.delete(key);
+}
+
+async function handleAudioUpload(event, monthIndex, songIndex) {
+    const file = event?.target?.files?.[0];
+    if (!file) return;
+
+    const month = months[monthIndex];
+    if (!month) return;
+
+    const monthId = month.id ?? monthIndex;
+    const key = getAudioKey(monthId, songIndex);
+
+    try {
+        await audioDbPut(key, file);
+        revokeAudioObjectUrl(key);
+        persistMonths();
+        rerenderCurrentMonth();
+    } catch (err) {
+        console.error(err);
+        alert('No se pudo guardar el audio. Prueba con un mp3 más pequeño.');
+    }
+}
+
+async function removeAudioFile(monthIndex, songIndex) {
+    const month = months[monthIndex];
+    if (!month) return;
+    const monthId = month.id ?? monthIndex;
+    const key = getAudioKey(monthId, songIndex);
+    try {
+        await audioDbDelete(key);
+    } catch (err) {
+        console.error(err);
+    }
+    revokeAudioObjectUrl(key);
+    rerenderCurrentMonth();
+}
+
+async function hydrateMonthAudioPlayers(monthPage, monthIndex) {
+    const month = months[monthIndex];
+    if (!month) return;
+    const monthId = month.id ?? monthIndex;
+
+    const audios = monthPage.querySelectorAll('audio[data-audio-key]');
+    await Promise.all(Array.from(audios).map(async (audio) => {
+        const key = audio.getAttribute('data-audio-key');
+        if (!key) return;
+
+        const blob = await audioDbGet(key);
+        if (!blob) {
+            audio.removeAttribute('src');
+            audio.classList.add('hidden-audio');
+            return;
+        }
+
+        audio.classList.remove('hidden-audio');
+        const cached = audioObjectUrlCache.get(key);
+        if (cached) {
+            audio.src = cached;
+            return;
+        }
+        const url = URL.createObjectURL(blob);
+        audioObjectUrlCache.set(key, url);
+        audio.src = url;
+    }));
+
+    const inputs = monthPage.querySelectorAll('input.audio-file-input[data-song-index]');
+    inputs.forEach((inp) => {
+        inp.addEventListener('change', (e) => {
+            const si = Number(inp.getAttribute('data-song-index'));
+            if (!Number.isFinite(si)) return;
+            handleAudioUpload(e, monthIndex, si);
+        });
+    });
+}
 const SPECIAL_PLACE_COORDS = [40.447022, -3.666234];
 const SPECIAL_PLACES = {
     january2023: {
@@ -410,6 +550,14 @@ function performMediaAction(index, action, type, target = 'all') {
 
     if (type === 'musica') {
         month.songUrl = '';
+        const monthId = month.id ?? index;
+        const actual = Array.isArray(month.songUrls) ? month.songUrls.length : 0;
+        for (let si = 0; si < actual; si += 1) {
+            const key = getAudioKey(monthId, si);
+            audioDbDelete(key).catch(() => {});
+            revokeAudioObjectUrl(key);
+        }
+        month.songUrls = [];
         month.showMusic = false;
     }
 
@@ -487,11 +635,18 @@ function acceptMediaAmount(index, action, tipo) {
         }
     } else if (tipo === 'musica') {
         if (action === 'add') {
-            months[index].songUrls = Array(Math.max(0, cantidad)).fill('');
-            months[index].showMusic = cantidad > 0;
+            const next = Math.max(0, cantidad);
+            months[index].songUrls = Array(next).fill('');
+            months[index].showMusic = next > 0;
         } else {
             const actual = Array.isArray(months[index].songUrls) ? months[index].songUrls.length : 0;
             const nuevo = Math.max(0, actual - cantidad);
+            const monthId = months[index]?.id ?? index;
+            for (let si = nuevo; si < actual; si += 1) {
+                const key = getAudioKey(monthId, si);
+                audioDbDelete(key).catch(() => {});
+                revokeAudioObjectUrl(key);
+            }
             months[index].songUrls = Array(nuevo).fill('');
             months[index].showMusic = nuevo > 0;
         }
@@ -627,12 +782,13 @@ function renderMonths() {
                     ${safeMonth.showMusic ? `
                         <div class="media-dotted media-dotted-music">
                             <h3 class="section-title">🎵 Música</h3>
-                            ${(Array.isArray(safeMonth.songUrls) ? safeMonth.songUrls : []).map((s, si) => `
+                            ${(Array.isArray(safeMonth.songUrls) ? safeMonth.songUrls : []).map((_, si) => `
                                 <div class="media-item">
-                                    <div class="media-row">
-                                        <input type="url" class="media-input song-input" id="songUrl-${index}-${si}" placeholder="Enlace de música" value="${escapeAttribute(s)}">
+                                    <div class="audio-row">
+                                        <input type="file" class="audio-file-input" data-song-index="${si}" accept="audio/*">
+                                        <button class="mini-btn danger" type="button" onclick="removeAudioFile(${index}, ${si})">Quitar</button>
                                     </div>
-                                    ${s ? `<div class="media-preview">${renderMediaPreview(s, 'song')}</div>` : ''}
+                                    <audio class="audio-player hidden-audio" controls preload="metadata" data-audio-key="${getAudioKey(safeMonth.id ?? index, si)}"></audio>
                                 </div>
                             `).join('')}
                         </div>
@@ -747,6 +903,8 @@ function renderMonths() {
                 });
             });
         }
+
+        hydrateMonthAudioPlayers(monthPage, index);
     });
 
     renderIndex();
