@@ -672,6 +672,12 @@ body {
     position: relative;
 }
 
+@media (max-width: 768px) {
+    .month-header {
+        margin-top: 54px;
+    }
+}
+
 .top-left-nav {
     position: fixed;
     top: calc(12px + env(safe-area-inset-top));
@@ -687,6 +693,18 @@ body {
         top: calc(8px + env(safe-area-inset-top));
         left: calc(8px + env(safe-area-inset-left));
         gap: 6px;
+    }
+
+    .top-left-nav .btn-text {
+        display: none;
+    }
+
+    .top-left-nav .action-btn {
+        flex: 0 0 auto;
+        min-width: 42px;
+        padding: 10px 10px;
+        font-size: 0.95rem;
+        border-radius: 10px;
     }
 }
 
@@ -706,6 +724,7 @@ body {
 /* Mobile header adjustments */
 @media (max-width: 640px) {
     .month-header {
+        margin-top: 52px;
         margin-bottom: 8px;
         padding-bottom: 30px;
         border-bottom-width: 2px;

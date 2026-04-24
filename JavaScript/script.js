@@ -582,8 +582,8 @@ function renderMonths() {
             </div>
 
             <div class="top-left-nav">
-                <button class="action-btn index" onclick="openIndex()"><i class="fas fa-list"></i> Índice</button>
-                <button class="action-btn cover" onclick="goToCover()"><i class="fas fa-book-open"></i> Portada</button>
+                <button class="action-btn index" onclick="openIndex()"><i class="fas fa-list"></i> <span class="btn-text">Índice</span></button>
+                <button class="action-btn cover" onclick="goToCover()"><i class="fas fa-book-open"></i> <span class="btn-text">Portada</span></button>
             </div>
 
             <div class="month-header">
