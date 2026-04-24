@@ -89,6 +89,59 @@ function getAudioKey(monthId, songIndex) {
     return `audio:${monthId}:${songIndex}`;
 }
 
+const BOOKS_DB_NAME = 'cumplea-osBooks';
+const BOOKS_DB_STORE = 'monthsData';
+let booksDbPromise = null;
+
+function openBooksDb() {
+    if (booksDbPromise) return booksDbPromise;
+
+    booksDbPromise = new Promise((resolve, reject) => {
+        const request = indexedDB.open(BOOKS_DB_NAME, 1);
+        request.onupgradeneeded = () => {
+            const db = request.result;
+            if (!db.objectStoreNames.contains(BOOKS_DB_STORE)) {
+                db.createObjectStore(BOOKS_DB_STORE);
+            }
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+
+    return booksDbPromise;
+}
+
+async function saveBooksDb(data) {
+    try {
+        const db = await openBooksDb();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(BOOKS_DB_STORE, 'readwrite');
+            const store = tx.objectStore(BOOKS_DB_STORE);
+            store.put(data, 'months');
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+        });
+    } catch (err) {
+        console.error('Error saving to IndexedDB:', err);
+    }
+}
+
+async function loadBooksDb() {
+    try {
+        const db = await openBooksDb();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(BOOKS_DB_STORE, 'readonly');
+            const store = tx.objectStore(BOOKS_DB_STORE);
+            const req = store.get('months');
+            req.onsuccess = () => resolve(req.result || null);
+            req.onerror = () => reject(tx.error);
+        });
+    } catch (err) {
+        console.error('Error loading from IndexedDB:', err);
+        return null;
+    }
+}
+
 function openAudioDb() {
     if (audioDbPromise) return audioDbPromise;
 
@@ -651,6 +704,8 @@ function initializeMonths() {
 
 function persistMonths() {
     localStorage.setItem(BOOK_STORAGE_KEY, JSON.stringify(months));
+    // También guardar en IndexedDB para que funcione en cualquier contexto (localhost, file://, etc)
+    saveBooksDb(months).catch(err => console.error('Error persisting to IndexedDB:', err));
 }
 
 function saveMonthData(index) {
@@ -1835,6 +1890,16 @@ function showMonth(index, direction = 'forward') {
     }
 
     incomingPage.classList.add('active', 'animating', isBackward ? 'page-in-backward' : 'page-in-forward');
+    
+    // Reiniciar el tiempo de todos los audios en la página nueva
+    incomingPage.querySelectorAll('audio').forEach((audio) => {
+        try {
+            audio.currentTime = 0;
+        } catch {
+            // ignore
+        }
+    });
+    
     initSpotifyPlayers(incomingPage);
     autoplaySpotifyPlayersOnPage(incomingPage);
     incomingPage.addEventListener('animationend', () => {
@@ -2083,18 +2148,49 @@ function registerPageNavigationInputs() {
 
 }
 
-function loadBook() {
-    const saved = localStorage.getItem(BOOK_STORAGE_KEY);
-    if (saved) {
+async function loadBook() {
+    console.log('[loadBook] Iniciando carga de datos...');
+    
+    // Intentar cargar de IndexedDB primero (funciona en cualquier contexto: file://, localhost, Netlify, etc)
+    let saved = await loadBooksDb();
+    console.log('[loadBook] Datos de IndexedDB:', saved ? `${saved.length} meses` : 'null');
+    
+    let migratedFromLocalStorage = false;
+    
+    if (!saved) {
+        // Si no está en IndexedDB, intentar cargar de localStorage (legacy)
+        const savedLocalStorage = localStorage.getItem(BOOK_STORAGE_KEY);
+        console.log('[loadBook] Datos de localStorage:', savedLocalStorage ? 'encontrado' : 'no encontrado');
+        
+        if (savedLocalStorage) {
+            try {
+                saved = JSON.parse(savedLocalStorage);
+                console.log('[loadBook] Datos parseados de localStorage:', `${saved.length} meses`);
+                migratedFromLocalStorage = true;
+            } catch {
+                console.error('[loadBook] Error al parsear localStorage');
+                saved = null;
+            }
+        }
+    }
+
+    if (saved && Array.isArray(saved) && saved.length > 0) {
         try {
-            months = JSON.parse(saved);
+            months = saved;
+            console.log('[loadBook] Cargados exitosamente:', `${months.length} meses`);
         } catch {
+            console.error('[loadBook] Error al asignar meses');
             months = [];
         }
     }
 
     if (!Array.isArray(months) || months.length === 0) {
+        console.log('[loadBook] No hay datos, inicializando meses por defecto...');
         initializeMonths();
+    } else if (migratedFromLocalStorage) {
+        // Si migramos de localStorage, guardar en IndexedDB para que en el próximo load use IndexedDB
+        console.log('[loadBook] Migrando localStorage a IndexedDB...');
+        await saveBooksDb(months).catch(err => console.error('Error migrating to IndexedDB:', err));
     }
 
     // Migración: si algún mes no tiene id, asignarlo y mover audios guardados por índice.
@@ -2111,6 +2207,7 @@ function loadBook() {
         legacyMigrations.push({ oldIndex: idx, newId, songCount: legacyCount });
     });
     if (idsChanged) {
+        console.log('[loadBook] IDs actualizados, re-persistiendo...');
         persistMonths();
         migrateLegacyAudioKeys(legacyMigrations).catch((err) => console.error(err));
     }
@@ -2467,8 +2564,167 @@ document.addEventListener('click', (event) => {
     }
 });
 
-loadBook();
-generateCoverEmojis();
-startCoverEffects();
-loadCoverPhoto();
-registerPageNavigationInputs();
+// ============================================================================
+// FUNCIONES DE SINCRONIZACIÓN ENTRE ORÍGENES (file:// vs localhost vs Netlify)
+// ============================================================================
+/**
+ * Exporta todos los datos del libro a un archivo JSON descargable.
+ * Útil cuando se cambia entre file:/// y Go Live (localhost)
+ * Uso: En consola, ejecutar: window.exportData()
+ */
+async function exportData() {
+    const dataToExport = {
+        months: months,
+        timestamp: new Date().toISOString(),
+        origin: window.location.origin
+    };
+    
+    // Crear un blob y descargarlo
+    const jsonStr = JSON.stringify(dataToExport, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `cumpleaos-backup-${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    console.log('✅ Datos exportados. Archivo descargado:', a.download);
+    return dataToExport;
+}
+
+/**
+ * Importa datos desde un archivo JSON.
+ * Útil para sincronizar datos entre file:/// y Go Live (localhost)
+ * Uso en consola: 
+ *   const fileInput = document.createElement('input');
+ *   fileInput.type = 'file';
+ *   fileInput.onchange = (e) => {
+ *     const file = e.target.files[0];
+ *     const reader = new FileReader();
+ *     reader.onload = (event) => {
+ *       const data = JSON.parse(event.target.result);
+ *       window.importData(data.months);
+ *     };
+ *     reader.readAsText(file);
+ *   };
+ *   fileInput.click();
+ */
+async function importData(monthsData) {
+    if (!Array.isArray(monthsData) || monthsData.length === 0) {
+        console.error('❌ Error: El archivo no contiene datos válidos.');
+        return false;
+    }
+    
+    try {
+        months = monthsData;
+        await persistMonths();
+        console.log(`✅ ${monthsData.length} meses importados correctamente.`);
+        console.log('Recargando la página en 1 segundo...');
+        setTimeout(() => {
+            window.location.reload();
+        }, 1000);
+        return true;
+    } catch (err) {
+        console.error('❌ Error al importar datos:', err);
+        return false;
+    }
+}
+
+/**
+ * Abre un diálogo de selección de archivo para importar datos
+ * Uso simple desde consola: window.importFromFile()
+ */
+function importFromFile() {
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.json';
+    fileInput.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const data = JSON.parse(event.target.result);
+                const monthsToImport = data.months || data;
+                importData(monthsToImport);
+            } catch (err) {
+                console.error('❌ Error al procesar el archivo:', err);
+                alert('Error: El archivo no es válido. Asegúrate de que es un archivo de backup generado por exportData()');
+            }
+        };
+        reader.readAsText(file);
+    };
+    fileInput.click();
+}
+
+// Exponer funciones globales para uso en consola
+window.exportData = exportData;
+window.importData = importData;
+window.importFromFile = importFromFile;
+
+// Función de diagnóstico detallada
+window.diagnosticarPersistencia = async function() {
+    console.clear();
+    console.log('%c🔍 DIAGNÓSTICO DE PERSISTENCIA', 'font-size: 16px; font-weight: bold; color: #ff6b6b;');
+    console.log('%c═════════════════════════════════════════', 'color: #ff6b6b;');
+    
+    const origin = window.location.origin;
+    console.log(`\n📍 Origen actual: ${origin}`);
+    
+    // localStorage
+    const localStorageData = localStorage.getItem(BOOK_STORAGE_KEY);
+    const localStorageCount = localStorageData ? JSON.parse(localStorageData).length : 0;
+    console.log(`\n💾 localStorage (${BOOK_STORAGE_KEY}):`);
+    console.log(`   ${localStorageData ? `✅ ${localStorageCount} meses guardados` : '❌ Vacío'}`);
+    
+    // IndexedDB
+    try {
+        const idbData = await loadBooksDb();
+        const idbCount = idbData ? idbData.length : 0;
+        console.log(`\n📦 IndexedDB ('${BOOKS_DB_NAME}' → '${BOOKS_DB_STORE}'):`);
+        console.log(`   ${idbData ? `✅ ${idbCount} meses guardados` : '❌ Vacío'}`);
+    } catch (err) {
+        console.log(`\n📦 IndexedDB: ❌ Error - ${err.message}`);
+    }
+    
+    // En memoria
+    console.log(`\n🧠 En memoria (variable 'months'):`);
+    console.log(`   ${months.length > 0 ? `✅ ${months.length} meses cargados` : '❌ Vacío'}`);
+    
+    // Estado de Febrero 2023
+    const febrero = months.find(m => m.month === 'Febrero' && m.year === 2023);
+    console.log(`\n📅 Febrero 2023:`);
+    if (febrero) {
+        console.log(`   ✅ Encontrado`);
+        console.log(`   📝 Texto: ${febrero.texts ? (febrero.texts[0] ? '✅ Sí' : '❌ No') : '❌ No'}`);
+        console.log(`   🎵 Música: ${febrero.songUrls ? (febrero.songUrls.length > 0 ? '✅ Sí' : '❌ No') : '❌ No'}`);
+    } else {
+        console.log(`   ❌ No encontrado`);
+    }
+    
+    console.log('\n%c═════════════════════════════════════════', 'color: #ff6b6b;');
+    console.log('%c💡 SOLUCIONES RECOMENDADAS:', 'font-size: 14px; font-weight: bold; color: #4ecdc4;');
+    console.log('   1. window.exportData() → Descargar backup JSON');
+    console.log('   2. window.importFromFile() → Importar desde JSON');
+    console.log('   3. Cambiar entre file:/// y Go Live y ejecutar nuevamente');
+};
+
+// Mensaje informativo en consola
+console.log('%c📚 Sincronización de datos disponible:', 'font-size: 14px; font-weight: bold; color: #ff6b6b;');
+console.log('%cPara diagnosticar: window.diagnosticarPersistencia()', 'color: #ffd93d;');
+console.log('%cPara exportar datos: window.exportData()', 'color: #4ecdc4;');
+console.log('%cPara importar datos: window.importFromFile()', 'color: #4ecdc4;');
+console.log('%c(Útil cuando cambias entre file:/// y Go Live)', 'color: #95e1d3; font-style: italic;');
+
+// Inicializar la aplicación esperando a que se carguen los datos de IndexedDB
+(async () => {
+    await loadBook();
+    generateCoverEmojis();
+    startCoverEffects();
+    loadCoverPhoto();
+    registerPageNavigationInputs();
+})();
