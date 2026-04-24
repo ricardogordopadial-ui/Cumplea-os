@@ -11,6 +11,13 @@ const AUDIO_DB_STORE = 'files';
 let audioDbPromise = null;
 const audioObjectUrlCache = new Map();
 
+const JULY_2023_DEFAULT_TRACK = {
+    title: 'Columbia',
+    artist: 'Quevedo',
+    coverSrc: 'assets/july-2023-album.jpg',
+    audioSrc: 'musica/Columbia - Quevedo (Video Oficial).mp3'
+};
+
 function getAudioKey(monthId, songIndex) {
     return `audio:${monthId}:${songIndex}`;
 }
@@ -73,6 +80,129 @@ function revokeAudioObjectUrl(key) {
     audioObjectUrlCache.delete(key);
 }
 
+function parseSongIndexFromAudioKey(key) {
+    if (!key) return null;
+    const parts = String(key).split(':');
+    const raw = parts[parts.length - 1];
+    const idx = Number(raw);
+    return Number.isFinite(idx) ? idx : null;
+}
+
+function getFallbackAudioSrc(month, songIndex) {
+    if (!month) return '';
+    if (month.month === 'Julio' && month.year === 2023 && songIndex === 0) {
+        return encodeURI(JULY_2023_DEFAULT_TRACK.audioSrc);
+    }
+    return '';
+}
+
+function formatAudioTime(seconds) {
+    const safe = Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
+    const m = Math.floor(safe / 60);
+    const s = Math.floor(safe % 60);
+    return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+function initSpotifyPlayers(monthPage) {
+    const cards = monthPage.querySelectorAll('.spotify-card');
+
+    cards.forEach((card) => {
+        if (card.getAttribute('data-spotify-bound') === 'true') return;
+        card.setAttribute('data-spotify-bound', 'true');
+
+        const audio = card.querySelector('audio');
+        const playBtn = card.querySelector('button[data-action="toggle"]');
+        const slowerBtn = card.querySelector('button[data-action="slower"]');
+        const fasterBtn = card.querySelector('button[data-action="faster"]');
+        const seek = card.querySelector('input.spotify-seek');
+        const currentTimeEl = card.querySelector('[data-role="currentTime"]');
+        const durationEl = card.querySelector('[data-role="duration"]');
+
+        if (!audio || !playBtn || !seek) return;
+
+        const updatePlayIcon = () => {
+            const icon = playBtn.querySelector('i');
+            if (!icon) return;
+            icon.className = audio.paused ? 'fas fa-play' : 'fas fa-pause';
+        };
+
+        const updateTimes = () => {
+            const dur = Number.isFinite(audio.duration) ? audio.duration : 0;
+            const cur = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
+            seek.max = String(Math.max(0, dur));
+            seek.value = String(Math.min(Math.max(0, cur), Math.max(0, dur)));
+            if (currentTimeEl) currentTimeEl.textContent = formatAudioTime(cur);
+            if (durationEl) durationEl.textContent = dur ? formatAudioTime(dur) : '0:00';
+        };
+
+        playBtn.addEventListener('click', async () => {
+            try {
+                if (audio.paused) {
+                    await audio.play();
+                } else {
+                    audio.pause();
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        });
+
+        if (slowerBtn) {
+            slowerBtn.addEventListener('click', () => {
+                audio.playbackRate = Math.min(2, (audio.playbackRate || 1) + 0.25);
+            });
+        }
+
+        if (fasterBtn) {
+            fasterBtn.addEventListener('click', () => {
+                audio.playbackRate = Math.min(2, (audio.playbackRate || 1) + 0.25);
+            });
+        }
+
+        seek.addEventListener('input', () => {
+            const next = Number(seek.value);
+            if (!Number.isFinite(next)) return;
+            audio.currentTime = next;
+        });
+
+        audio.addEventListener('loadedmetadata', updateTimes);
+        audio.addEventListener('timeupdate', updateTimes);
+        audio.addEventListener('durationchange', updateTimes);
+        audio.addEventListener('play', () => {
+            updatePlayIcon();
+        });
+        audio.addEventListener('pause', () => {
+            updatePlayIcon();
+        });
+
+        updatePlayIcon();
+        updateTimes();
+    });
+}
+
+function autoplaySpotifyPlayersOnPage(monthPage) {
+    const cards = monthPage.querySelectorAll('.spotify-card[data-autoplay="true"]');
+    cards.forEach((card) => {
+        const audio = card.querySelector('audio');
+        if (!audio || !audio.src) return;
+        if (!audio.paused) return;
+
+        const tryAutoplay = async () => {
+            try {
+                await audio.play();
+            } catch {
+                // Autoplay puede estar bloqueado por el navegador
+            }
+        };
+
+        if (audio.readyState >= 1) {
+            tryAutoplay();
+        } else {
+            audio.addEventListener('loadedmetadata', tryAutoplay, { once: true });
+        }
+    });
+}
+
 async function handleAudioUpload(event, monthIndex, songIndex) {
     const file = event?.target?.files?.[0];
     if (!file) return;
@@ -120,8 +250,17 @@ async function hydrateMonthAudioPlayers(monthPage, monthIndex) {
 
         const blob = await audioDbGet(key);
         if (!blob) {
-            audio.removeAttribute('src');
-            audio.classList.add('hidden-audio');
+            const songIndex = parseSongIndexFromAudioKey(key);
+            const fallback = Number.isFinite(songIndex) ? getFallbackAudioSrc(month, songIndex) : '';
+            if (!fallback) {
+                audio.removeAttribute('src');
+                audio.classList.add('hidden-audio');
+                return;
+            }
+
+            revokeAudioObjectUrl(key);
+            audio.classList.remove('hidden-audio');
+            audio.src = fallback;
             return;
         }
 
@@ -144,6 +283,11 @@ async function hydrateMonthAudioPlayers(monthPage, monthIndex) {
             handleAudioUpload(e, monthIndex, si);
         });
     });
+
+    initSpotifyPlayers(monthPage);
+    if (monthPage.classList.contains('active')) {
+        autoplaySpotifyPlayersOnPage(monthPage);
+    }
 }
 const SPECIAL_PLACE_COORDS = [40.447022, -3.666234];
 const SPECIAL_PLACES = {
@@ -470,6 +614,88 @@ function rerenderCurrentMonth(direction = 'forward') {
     showMonth(currentMonth, direction);
 }
 
+function removePhoto(monthIndex, imageIndex) {
+    const month = months[monthIndex];
+    if (!month) return;
+    if (!Array.isArray(month.images)) return;
+    if (imageIndex < 0 || imageIndex >= month.images.length) return;
+
+    month.images[imageIndex] = '';
+    if (month.images.every((img) => !String(img || '').trim())) {
+        month.showPhotos = false;
+    }
+
+    persistMonths();
+    rerenderCurrentMonth();
+}
+
+function removeVideoEntry(monthIndex, videoIndex) {
+    const month = months[monthIndex];
+    if (!month) return;
+    if (!Array.isArray(month.videoUrls)) return;
+    if (videoIndex < 0 || videoIndex >= month.videoUrls.length) return;
+
+    month.videoUrls.splice(videoIndex, 1);
+    if (month.videoUrls.length === 0) {
+        month.showVideo = false;
+    }
+
+    persistMonths();
+    rerenderCurrentMonth();
+}
+
+async function removeSongEntry(monthIndex, songIndex) {
+    const month = months[monthIndex];
+    if (!month) return;
+    if (!Array.isArray(month.songUrls)) return;
+    if (songIndex < 0 || songIndex >= month.songUrls.length) return;
+
+    const monthId = month.id ?? monthIndex;
+    const lastIndex = month.songUrls.length - 1;
+
+    // Compactar: mover audio (index+1 -> index) para mantener claves alineadas.
+    for (let i = songIndex; i < lastIndex; i += 1) {
+        const toKey = getAudioKey(monthId, i);
+        const fromKey = getAudioKey(monthId, i + 1);
+
+        // Cache de objectURL
+        revokeAudioObjectUrl(toKey);
+        const movedUrl = audioObjectUrlCache.get(fromKey);
+        if (movedUrl) {
+            audioObjectUrlCache.set(toKey, movedUrl);
+            audioObjectUrlCache.delete(fromKey);
+        }
+
+        try {
+            const blob = await audioDbGet(fromKey);
+            if (blob) {
+                await audioDbPut(toKey, blob);
+            } else {
+                await audioDbDelete(toKey);
+            }
+            await audioDbDelete(fromKey);
+        } catch (err) {
+            console.error(err);
+        }
+    }
+
+    const lastKey = getAudioKey(monthId, lastIndex);
+    try {
+        await audioDbDelete(lastKey);
+    } catch (err) {
+        console.error(err);
+    }
+    revokeAudioObjectUrl(lastKey);
+
+    month.songUrls.splice(songIndex, 1);
+    if (month.songUrls.length === 0) {
+        month.showMusic = false;
+    }
+
+    persistMonths();
+    rerenderCurrentMonth();
+}
+
 function closeAllMediaMenus() {
     document.querySelectorAll('.media-dropdown.open').forEach((dropdown) => {
         dropdown.classList.remove('open');
@@ -593,7 +819,7 @@ function renderMediaDropdown(index, action, icon, label, buttonClass) {
     }
     // Menú con handlers para mostrar el input
     return `
-        <div class=\"media-dropdown\" id=\"mediaMenu-${action}-${index}\">\n            <button class=\"action-btn ${buttonClass}\" onclick=\"toggleMediaMenu(${index}, '${action}')\">\n                <i class=\"fas fa-${icon}\"></i> ${label}\n            </button>\n            <div class=\"media-menu\">\n                <div class=\"media-menu-group\">\n                    <div class=\"media-menu-label\">Fotos<\/div>\n                    <button class=\"media-menu-item\" onclick=\"showMediaInput(${index}, '${action}', 'fotos')\">${isAdd ? 'Añadir' : 'Quitar'} fotos<\/button>\n                <\/div>\n                <div class=\"media-menu-group\">\n                    <div class=\"media-menu-label\">Otros<\/div>\n                    <button class=\"media-menu-item\" onclick=\"showMediaInput(${index}, '${action}', 'texto')\">${isAdd ? 'Añadir' : 'Quitar'} texto<\/button>\n                    <button class=\"media-menu-item\" onclick=\"showMediaInput(${index}, '${action}', 'musica')\">${isAdd ? 'Añadir' : 'Quitar'} música<\/button>\n                    <button class=\"media-menu-item\" onclick=\"showMediaInput(${index}, '${action}', 'video')\">${isAdd ? 'Añadir' : 'Quitar'} vídeo<\/button>\n                <\/div>\n                <div id=\"mediaInputContainer-${action}-${index}\"><\/div>\n            <\/div>\n        <\/div>\n    `;
+        <div class=\"media-dropdown\" id=\"mediaMenu-${action}-${index}\">\n            <button class=\"action-btn ${buttonClass}\" onclick=\"toggleMediaMenu(${index}, '${action}')\">\n                <i class=\"fas fa-${icon}\"></i> ${label}\n            </button>\n            <div class=\"media-menu\">\n                <div class=\"media-menu-group\">\n                    <div class=\"media-menu-label\">Fotos<\/div>\n                    <button class=\"media-menu-item\" onclick=\"showMediaInput(${index}, '${action}', 'fotos')\">${isAdd ? 'Añadir' : 'Quitar'} fotos<\/button>\n                <\/div>\n                <div class=\"media-menu-group\">\n                    <div class=\"media-menu-label\">Música<\/div>\n                    <button class=\"media-menu-item\" onclick=\"showMediaInput(${index}, '${action}', 'musica')\">${isAdd ? 'Añadir' : 'Quitar'} música<\/button>\n                <\/div>\n                <div class=\"media-menu-group\">\n                    <div class=\"media-menu-label\">Vídeo<\/div>\n                    <button class=\"media-menu-item\" onclick=\"showMediaInput(${index}, '${action}', 'video')\">${isAdd ? 'Añadir' : 'Quitar'} vídeo<\/button>\n                <\/div>\n                <div id=\"mediaInputContainer-${action}-${index}\"><\/div>\n            <\/div>\n        <\/div>\n    `;
 }
 
 // Mostrar input de cantidad
@@ -722,6 +948,7 @@ function renderMonths() {
 
         // Verificar si es enero 2023 para layout especial
         const isJanuary2023 = safeMonth.month === 'Enero' && safeMonth.year === 2023;
+        const isJuly2023 = safeMonth.month === 'Julio' && safeMonth.year === 2023;
 
         const monthPage = document.createElement('div');
         monthPage.className = `month-page ${index === currentMonth ? 'active' : ''}`;
@@ -762,18 +989,18 @@ function renderMonths() {
                         <div class="image-gallery ${galleryClass}">
                             ${Array.isArray(safeMonth.images) ? safeMonth.images.map((img, i) => {
                                 // Para Enero 2023: solo mostrar imágenes que existan o la primera posición vacía
-                                if (isJanuary2023) {
-                                    if (img) {
-                                        return `<div class="image-placeholder" onclick="triggerImageUpload(${index}, ${i})"><img src="${img}" alt="Imagen ${i + 1}"></div>`;
-                                    } else if (i === 0) {
-                                        return `<div class="image-placeholder" onclick="triggerImageUpload(${index}, ${i})"><i class="fas fa-plus" style="font-size:2rem;color:#FF6B35;"></i></div>`;
-                                    }
-                                    return '';
-                                } else {
+                                    if (isJanuary2023) {
+                                        if (img) {
+                                        return `<div class="image-placeholder" onclick="triggerImageUpload(${index}, ${i})"><button class="media-x-btn image-x" type="button" onclick="removePhoto(${index}, ${i}); event.stopPropagation();" aria-label="Eliminar foto">×</button><img src="${img}" alt="Imagen ${i + 1}"></div>`;
+                                        } else if (i === 0) {
+                                            return `<div class="image-placeholder" onclick="triggerImageUpload(${index}, ${i})"><i class="fas fa-plus" style="font-size:2rem;color:#FF6B35;"></i></div>`;
+                                        }
+                                        return '';
+                                    } else {
                                     return `<div class="image-placeholder" onclick="triggerImageUpload(${index}, ${i})">
-                                        ${img ? `<img src="${img}" alt="Imagen ${i + 1}">` : '<i class="fas fa-plus" style="font-size:2rem;color:#FF6B35;"></i>'}
+                                        ${img ? `<button class="media-x-btn image-x" type="button" onclick="removePhoto(${index}, ${i}); event.stopPropagation();" aria-label="Eliminar foto">×</button><img src="${img}" alt="Imagen ${i + 1}">` : '<i class="fas fa-plus" style="font-size:2rem;color:#FF6B35;"></i>'}
                                     </div>`;
-                                }
+                                    }
                             }).join('') : ''}
                         </div>
                         <input type="file" class="image-input" id="imageInput-${index}" accept="image/*">
@@ -783,12 +1010,45 @@ function renderMonths() {
                         <div class="media-dotted media-dotted-music">
                             <h3 class="section-title">🎵 Música</h3>
                             ${(Array.isArray(safeMonth.songUrls) ? safeMonth.songUrls : []).map((_, si) => `
-                                <div class="media-item">
-                                    <div class="audio-row">
-                                        <input type="file" class="audio-file-input" data-song-index="${si}" accept="audio/*">
-                                        <button class="mini-btn danger" type="button" onclick="removeAudioFile(${index}, ${si})">Quitar</button>
+                                <div class="media-item spotify-wrapper">
+                                    <div class="spotify-card" data-autoplay="${(isJuly2023 && si === 0) ? 'true' : 'false'}">
+                                        <button class="media-x-btn spotify-x" type="button" onclick="removeSongEntry(${index}, ${si})" aria-label="Eliminar música">×</button>
+
+                                        <div class="spotify-cover">
+                                            ${isJuly2023 ? `<img src="${JULY_2023_DEFAULT_TRACK.coverSrc}" alt="Portada de ${JULY_2023_DEFAULT_TRACK.title}">` : `<div class="spotify-cover-placeholder" aria-hidden="true"><i class="fas fa-music"></i></div>`}
+                                        </div>
+
+                                        <div class="spotify-meta">
+                                            <div class="spotify-meta-left">
+                                                <div class="spotify-title">${isJuly2023 ? JULY_2023_DEFAULT_TRACK.title : 'Canción'}</div>
+                                                <div class="spotify-artist">${isJuly2023 ? JULY_2023_DEFAULT_TRACK.artist : ''}</div>
+                                            </div>
+                                            <div class="spotify-meta-right" aria-hidden="true">
+                                                <i class="fa-solid fa-heart spotify-heart"></i>
+                                            </div>
+                                        </div>
+
+                                        <div class="spotify-divider"></div>
+
+                                        <div class="spotify-progress">
+                                            <span class="spotify-time" data-role="currentTime">0:00</span>
+                                            <input class="spotify-seek" type="range" min="0" max="0" value="0" step="0.1">
+                                            <span class="spotify-time" data-role="duration">0:00</span>
+                                        </div>
+
+                                        <div class="spotify-controls">
+                                            <button class="spotify-btn" type="button" data-action="slower" aria-label="Retroceder"><i class="fas fa-backward-step"></i></button>
+                                            <button class="spotify-btn play" type="button" data-action="toggle" aria-label="Pausa/Reanudar"><i class="fas fa-play"></i></button>
+                                            <button class="spotify-btn" type="button" data-action="faster" aria-label="Avanzar"><i class="fas fa-forward-step"></i></button>
+                                        </div>
+
+                                        <label class="spotify-upload">
+                                            <input type="file" class="audio-file-input" data-song-index="${si}" accept="audio/*">
+                                            <span>Cambiar canción</span>
+                                        </label>
+
+                                        <audio class="audio-player hidden-audio" preload="metadata" data-audio-key="${getAudioKey(safeMonth.id ?? index, si)}"></audio>
                                     </div>
-                                    <audio class="audio-player hidden-audio" controls preload="metadata" data-audio-key="${getAudioKey(safeMonth.id ?? index, si)}"></audio>
                                 </div>
                             `).join('')}
                         </div>
@@ -813,6 +1073,7 @@ function renderMonths() {
                                 <div class="media-item">
                                     <div class="media-row">
                                         <input type="url" class="media-input video-input" id="videoUrl-${index}-${vi}" placeholder="Enlace de video" value="${escapeAttribute(v)}">
+                                        <button class="media-x-btn" type="button" onclick="removeVideoEntry(${index}, ${vi})" aria-label="Eliminar vídeo">×</button>
                                     </div>
                                     ${v ? `<div class="media-preview">${renderMediaPreview(v, 'video')}</div>` : ''}
                                 </div>
@@ -838,7 +1099,6 @@ function renderMonths() {
                 <div class="action-buttons">
                     <button class="action-btn save" onclick="saveCurrentMonth()"><i class="fas fa-floppy-disk"></i> Guardar</button>
                     ${renderMediaDropdown(index, 'add', 'plus', 'Añadir multimedia', 'media')}
-                    ${renderMediaDropdown(index, 'remove', 'minus', 'Quitar multimedia', 'neutral')}
                     <button class="action-btn" onclick="addMonth()"><i class="fas fa-plus"></i> Añadir mes</button>
                     <button class="action-btn delete" onclick="deleteMonth(${index})" ${months.length <= 1 ? 'disabled' : ''}><i class="fas fa-trash"></i> Eliminar</button>
                 </div>
@@ -943,6 +1203,14 @@ function showMonth(index, direction = 'forward') {
     const isBackward = direction === 'backward';
 
     if (currentActive && currentActive !== incomingPage) {
+        currentActive.querySelectorAll('audio').forEach((audio) => {
+            try {
+                audio.pause();
+            } catch {
+                // ignore
+            }
+        });
+
         currentActive.classList.add('animating', isBackward ? 'page-out-backward' : 'page-out-forward');
         currentActive.classList.remove('active');
 
@@ -952,6 +1220,8 @@ function showMonth(index, direction = 'forward') {
     }
 
     incomingPage.classList.add('active', 'animating', isBackward ? 'page-in-backward' : 'page-in-forward');
+    initSpotifyPlayers(incomingPage);
+    autoplaySpotifyPlayersOnPage(incomingPage);
     incomingPage.addEventListener('animationend', () => {
         incomingPage.classList.remove('animating', 'page-in-forward', 'page-in-backward');
     }, { once: true });
@@ -1235,6 +1505,25 @@ function loadBook() {
 
         if (changed) {
             months[enero2023Index] = january;
+            persistMonths();
+        }
+    }
+
+    // Julio 2023: mostrar la canción por defecto (sin pisar lo que guardes)
+    const julio2023Index = months.findIndex(m => m.month === 'Julio' && m.year === 2023);
+    if (julio2023Index !== -1) {
+        const july = normalizeMonthData(months[julio2023Index]);
+        let changed = false;
+
+        const hasMusic = july.showMusic === true && Array.isArray(july.songUrls) && july.songUrls.length > 0;
+        if (!hasMusic) {
+            july.showMusic = true;
+            july.songUrls = [''];
+            changed = true;
+        }
+
+        if (changed) {
+            months[julio2023Index] = july;
             persistMonths();
         }
     }
