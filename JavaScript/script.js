@@ -629,6 +629,21 @@ function removePhoto(monthIndex, imageIndex) {
     rerenderCurrentMonth();
 }
 
+function removePhotoSlot(monthIndex, imageIndex) {
+    const month = months[monthIndex];
+    if (!month) return;
+    if (!Array.isArray(month.images)) return;
+    if (imageIndex < 0 || imageIndex >= month.images.length) return;
+
+    month.images.splice(imageIndex, 1);
+    if (month.images.length === 0) {
+        month.showPhotos = false;
+    }
+
+    persistMonths();
+    rerenderCurrentMonth();
+}
+
 function removeVideoEntry(monthIndex, videoIndex) {
     const month = months[monthIndex];
     if (!month) return;
@@ -993,12 +1008,12 @@ function renderMonths() {
                                         if (img) {
                                         return `<div class="image-placeholder" onclick="triggerImageUpload(${index}, ${i})"><button class="media-x-btn image-x" type="button" onclick="removePhoto(${index}, ${i}); event.stopPropagation();" aria-label="Eliminar foto">×</button><img src="${img}" alt="Imagen ${i + 1}"></div>`;
                                         } else if (i === 0) {
-                                            return `<div class="image-placeholder" onclick="triggerImageUpload(${index}, ${i})"><i class="fas fa-plus" style="font-size:2rem;color:#FF6B35;"></i></div>`;
+                                            return `<div class="image-placeholder" onclick="triggerImageUpload(${index}, ${i})"><button class="media-x-btn image-x" type="button" onclick="removePhotoSlot(${index}, ${i}); event.stopPropagation();" aria-label="Quitar cuadrado">×</button><i class="fas fa-plus" style="font-size:2rem;color:#FF6B35;"></i></div>`;
                                         }
                                         return '';
                                     } else {
                                     return `<div class="image-placeholder" onclick="triggerImageUpload(${index}, ${i})">
-                                        ${img ? `<button class="media-x-btn image-x" type="button" onclick="removePhoto(${index}, ${i}); event.stopPropagation();" aria-label="Eliminar foto">×</button><img src="${img}" alt="Imagen ${i + 1}">` : '<i class="fas fa-plus" style="font-size:2rem;color:#FF6B35;"></i>'}
+                                        ${img ? `<button class="media-x-btn image-x" type="button" onclick="removePhoto(${index}, ${i}); event.stopPropagation();" aria-label="Eliminar foto">×</button><img src="${img}" alt="Imagen ${i + 1}">` : `<button class="media-x-btn image-x" type="button" onclick="removePhotoSlot(${index}, ${i}); event.stopPropagation();" aria-label="Quitar cuadrado">×</button><i class="fas fa-plus" style="font-size:2rem;color:#FF6B35;"></i>`}
                                     </div>`;
                                     }
                             }).join('') : ''}
