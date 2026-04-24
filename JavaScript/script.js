@@ -1022,7 +1022,7 @@ function startTypedBirthdayMessage() {
     const target = document.getElementById('birthdayTyped');
     if (!target) return;
 
-    const text = 'Feliz cumpleaños amor 👸';
+    const text = 'Feliz cumpleaños amor';
     clearCoverTypedTimers();
     coverTypedRunning = true;
     target.textContent = '';
