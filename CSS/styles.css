@@ -246,6 +246,8 @@ body {
     color: rgba(255, 255, 255, 0.95);
     -webkit-text-fill-color: currentColor;
     background: none;
+    opacity: 0;
+    transition: opacity 180ms ease;
 }
 
 .typed-cursor {

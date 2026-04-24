@@ -1021,11 +1021,13 @@ function clearCoverTypedTimers() {
 function startTypedBirthdayMessage() {
     const target = document.getElementById('birthdayTyped');
     if (!target) return;
+    const queen = document.querySelector('.birthday-queen');
 
     const text = 'Feliz cumpleaños amor';
     clearCoverTypedTimers();
     coverTypedRunning = true;
     target.textContent = '';
+    if (queen) queen.style.opacity = '0';
 
     let index = 0;
     const step = () => {
@@ -1038,10 +1040,12 @@ function startTypedBirthdayMessage() {
             return;
         }
 
+        if (queen) queen.style.opacity = '1';
         coverTypedLoopTimeoutId = setTimeout(() => {
             if (!coverTypedRunning) return;
             index = 0;
             target.textContent = '';
+            if (queen) queen.style.opacity = '0';
             coverTypedTimeoutId = setTimeout(step, 500);
         }, 2600);
     };
