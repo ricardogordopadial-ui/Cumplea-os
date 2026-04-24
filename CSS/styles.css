@@ -1615,14 +1615,6 @@ body {
     }
 }
 
-/* En móviles, si hay fotos + música, limita la galería para que entre todo */
-@media (max-width: 768px) {
-    .photos-section.has-music .image-gallery {
-        height: clamp(160px, 22vh, 220px);
-        flex: 0 0 auto;
-    }
-}
-
 .media-item:last-child {
     margin-bottom: 0;
 }

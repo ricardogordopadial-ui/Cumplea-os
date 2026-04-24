@@ -614,7 +614,11 @@ function rerenderCurrentMonth(direction = 'forward') {
     showMonth(currentMonth, direction);
 }
 
-function removePhoto(monthIndex, imageIndex) {
+function removePhoto(monthIndex, imageIndex, event) {
+    if (event) {
+        event.preventDefault?.();
+        event.stopPropagation?.();
+    }
     const month = months[monthIndex];
     if (!month) return;
     if (!Array.isArray(month.images)) return;
@@ -629,7 +633,11 @@ function removePhoto(monthIndex, imageIndex) {
     rerenderCurrentMonth();
 }
 
-function removePhotoSlot(monthIndex, imageIndex) {
+function removePhotoSlot(monthIndex, imageIndex, event) {
+    if (event) {
+        event.preventDefault?.();
+        event.stopPropagation?.();
+    }
     const month = months[monthIndex];
     if (!month) return;
     if (!Array.isArray(month.images)) return;
@@ -644,13 +652,21 @@ function removePhotoSlot(monthIndex, imageIndex) {
     rerenderCurrentMonth();
 }
 
-function triggerAudioUpload(monthIndex, songIndex) {
+function triggerAudioUpload(monthIndex, songIndex, event) {
+    if (event) {
+        event.preventDefault?.();
+        event.stopPropagation?.();
+    }
     const input = document.getElementById(`audioInput-${monthIndex}-${songIndex}`);
     if (!input) return;
     input.click();
 }
 
-function removeVideoEntry(monthIndex, videoIndex) {
+function removeVideoEntry(monthIndex, videoIndex, event) {
+    if (event) {
+        event.preventDefault?.();
+        event.stopPropagation?.();
+    }
     const month = months[monthIndex];
     if (!month) return;
     if (!Array.isArray(month.videoUrls)) return;
@@ -665,7 +681,11 @@ function removeVideoEntry(monthIndex, videoIndex) {
     rerenderCurrentMonth();
 }
 
-async function removeSongEntry(monthIndex, songIndex) {
+async function removeSongEntry(monthIndex, songIndex, event) {
+    if (event) {
+        event.preventDefault?.();
+        event.stopPropagation?.();
+    }
     const month = months[monthIndex];
     if (!month) return;
     if (!Array.isArray(month.songUrls)) return;
@@ -1012,14 +1032,14 @@ function renderMonths() {
                                 // Para Enero 2023: solo mostrar imágenes que existan o la primera posición vacía
                                     if (isJanuary2023) {
                                         if (img) {
-                                        return `<div class="image-placeholder" onclick="triggerImageUpload(${index}, ${i})"><button class="media-x-btn image-x" type="button" onclick="removePhoto(${index}, ${i}); event.stopPropagation();" aria-label="Eliminar foto"><i class="fas fa-trash"></i></button><img src="${img}" alt="Imagen ${i + 1}"></div>`;
+                                        return `<div class="image-placeholder" onclick="triggerImageUpload(${index}, ${i})"><button class="media-x-btn image-x" type="button" onclick="removePhoto(${index}, ${i}, event)" aria-label="Eliminar foto"><i class="fas fa-trash"></i></button><img src="${img}" alt="Imagen ${i + 1}"></div>`;
                                         } else if (i === 0) {
-                                            return `<div class="image-placeholder" onclick="triggerImageUpload(${index}, ${i})"><button class="media-x-btn image-x" type="button" onclick="removePhotoSlot(${index}, ${i}); event.stopPropagation();" aria-label="Quitar cuadrado"><i class="fas fa-trash"></i></button><i class="fas fa-plus" style="font-size:2rem;color:#FF6B35;"></i></div>`;
+                                            return `<div class="image-placeholder" onclick="triggerImageUpload(${index}, ${i})"><button class="media-x-btn image-x" type="button" onclick="removePhotoSlot(${index}, ${i}, event)" aria-label="Quitar cuadrado"><i class="fas fa-trash"></i></button><i class="fas fa-plus" style="font-size:2rem;color:#FF6B35;"></i></div>`;
                                         }
                                         return '';
                                     } else {
                                     return `<div class="image-placeholder" onclick="triggerImageUpload(${index}, ${i})">
-                                        ${img ? `<button class="media-x-btn image-x" type="button" onclick="removePhoto(${index}, ${i}); event.stopPropagation();" aria-label="Eliminar foto"><i class="fas fa-trash"></i></button><img src="${img}" alt="Imagen ${i + 1}">` : `<button class="media-x-btn image-x" type="button" onclick="removePhotoSlot(${index}, ${i}); event.stopPropagation();" aria-label="Quitar cuadrado"><i class="fas fa-trash"></i></button><i class="fas fa-plus" style="font-size:2rem;color:#FF6B35;"></i>`}
+                                        ${img ? `<button class="media-x-btn image-x" type="button" onclick="removePhoto(${index}, ${i}, event)" aria-label="Eliminar foto"><i class="fas fa-trash"></i></button><img src="${img}" alt="Imagen ${i + 1}">` : `<button class="media-x-btn image-x" type="button" onclick="removePhotoSlot(${index}, ${i}, event)" aria-label="Quitar cuadrado"><i class="fas fa-trash"></i></button><i class="fas fa-plus" style="font-size:2rem;color:#FF6B35;"></i>`}
                                     </div>`;
                                     }
                             }).join('') : ''}
@@ -1028,14 +1048,14 @@ function renderMonths() {
                     ` : ''}
 
                     ${safeMonth.showMusic ? `
+                        <h3 class="section-title">🎵 Música</h3>
                         <div class="media-dotted media-dotted-music">
-                            <h3 class="section-title">🎵 Música</h3>
                             ${(Array.isArray(safeMonth.songUrls) ? safeMonth.songUrls : []).map((_, si) => `
                                 <div class="media-item spotify-wrapper">
                                     <div class="spotify-card" data-autoplay="${(isJuly2023 && si === 0) ? 'true' : 'false'}">
-                                        <button class="media-x-btn spotify-x" type="button" onclick="removeSongEntry(${index}, ${si})" aria-label="Eliminar música"><i class="fas fa-trash"></i></button>
+                                        <button class="media-x-btn spotify-x" type="button" onclick="removeSongEntry(${index}, ${si}, event)" aria-label="Eliminar música"><i class="fas fa-trash"></i></button>
 
-                                        <div class="spotify-cover" onclick="triggerAudioUpload(${index}, ${si}); event.stopPropagation();" title="Pulsa para elegir audio">
+                                        <div class="spotify-cover" onclick="triggerAudioUpload(${index}, ${si}, event)" title="Pulsa para elegir audio">
                                             ${isJuly2023 ? `<img src="${JULY_2023_DEFAULT_TRACK.coverSrc}" alt="Portada de ${JULY_2023_DEFAULT_TRACK.title}">` : `<div class="spotify-cover-placeholder" aria-hidden="true"><i class="fas fa-music"></i></div>`}
                                         </div>
 
@@ -1085,13 +1105,13 @@ function renderMonths() {
                     ` : ''}
 
                     ${safeMonth.showVideo ? `
+                        <h3 class="section-title">🎬 Video</h3>
                         <div class="media-dotted media-dotted-video">
-                            <h3 class="section-title">🎬 Video</h3>
                             ${(Array.isArray(safeMonth.videoUrls) ? safeMonth.videoUrls : []).map((v, vi) => `
                                 <div class="media-item">
                                     <div class="media-row">
                                         <input type="url" class="media-input video-input" id="videoUrl-${index}-${vi}" placeholder="Enlace de video" value="${escapeAttribute(v)}">
-                                        <button class="media-x-btn" type="button" onclick="removeVideoEntry(${index}, ${vi})" aria-label="Eliminar vídeo"><i class="fas fa-trash"></i></button>
+                                        <button class="media-x-btn" type="button" onclick="removeVideoEntry(${index}, ${vi}, event)" aria-label="Eliminar vídeo"><i class="fas fa-trash"></i></button>
                                     </div>
                                     ${v ? `<div class="media-preview">${renderMediaPreview(v, 'video')}</div>` : ''}
                                 </div>
