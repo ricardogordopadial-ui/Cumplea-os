@@ -644,6 +644,12 @@ function removePhotoSlot(monthIndex, imageIndex) {
     rerenderCurrentMonth();
 }
 
+function triggerAudioUpload(monthIndex, songIndex) {
+    const input = document.getElementById(`audioInput-${monthIndex}-${songIndex}`);
+    if (!input) return;
+    input.click();
+}
+
 function removeVideoEntry(monthIndex, videoIndex) {
     const month = months[monthIndex];
     if (!month) return;
@@ -1006,14 +1012,14 @@ function renderMonths() {
                                 // Para Enero 2023: solo mostrar imágenes que existan o la primera posición vacía
                                     if (isJanuary2023) {
                                         if (img) {
-                                        return `<div class="image-placeholder" onclick="triggerImageUpload(${index}, ${i})"><button class="media-x-btn image-x" type="button" onclick="removePhoto(${index}, ${i}); event.stopPropagation();" aria-label="Eliminar foto">×</button><img src="${img}" alt="Imagen ${i + 1}"></div>`;
+                                        return `<div class="image-placeholder" onclick="triggerImageUpload(${index}, ${i})"><button class="media-x-btn image-x" type="button" onclick="removePhoto(${index}, ${i}); event.stopPropagation();" aria-label="Eliminar foto"><i class="fas fa-trash"></i></button><img src="${img}" alt="Imagen ${i + 1}"></div>`;
                                         } else if (i === 0) {
-                                            return `<div class="image-placeholder" onclick="triggerImageUpload(${index}, ${i})"><button class="media-x-btn image-x" type="button" onclick="removePhotoSlot(${index}, ${i}); event.stopPropagation();" aria-label="Quitar cuadrado">×</button><i class="fas fa-plus" style="font-size:2rem;color:#FF6B35;"></i></div>`;
+                                            return `<div class="image-placeholder" onclick="triggerImageUpload(${index}, ${i})"><button class="media-x-btn image-x" type="button" onclick="removePhotoSlot(${index}, ${i}); event.stopPropagation();" aria-label="Quitar cuadrado"><i class="fas fa-trash"></i></button><i class="fas fa-plus" style="font-size:2rem;color:#FF6B35;"></i></div>`;
                                         }
                                         return '';
                                     } else {
                                     return `<div class="image-placeholder" onclick="triggerImageUpload(${index}, ${i})">
-                                        ${img ? `<button class="media-x-btn image-x" type="button" onclick="removePhoto(${index}, ${i}); event.stopPropagation();" aria-label="Eliminar foto">×</button><img src="${img}" alt="Imagen ${i + 1}">` : `<button class="media-x-btn image-x" type="button" onclick="removePhotoSlot(${index}, ${i}); event.stopPropagation();" aria-label="Quitar cuadrado">×</button><i class="fas fa-plus" style="font-size:2rem;color:#FF6B35;"></i>`}
+                                        ${img ? `<button class="media-x-btn image-x" type="button" onclick="removePhoto(${index}, ${i}); event.stopPropagation();" aria-label="Eliminar foto"><i class="fas fa-trash"></i></button><img src="${img}" alt="Imagen ${i + 1}">` : `<button class="media-x-btn image-x" type="button" onclick="removePhotoSlot(${index}, ${i}); event.stopPropagation();" aria-label="Quitar cuadrado"><i class="fas fa-trash"></i></button><i class="fas fa-plus" style="font-size:2rem;color:#FF6B35;"></i>`}
                                     </div>`;
                                     }
                             }).join('') : ''}
@@ -1027,9 +1033,9 @@ function renderMonths() {
                             ${(Array.isArray(safeMonth.songUrls) ? safeMonth.songUrls : []).map((_, si) => `
                                 <div class="media-item spotify-wrapper">
                                     <div class="spotify-card" data-autoplay="${(isJuly2023 && si === 0) ? 'true' : 'false'}">
-                                        <button class="media-x-btn spotify-x" type="button" onclick="removeSongEntry(${index}, ${si})" aria-label="Eliminar música">×</button>
+                                        <button class="media-x-btn spotify-x" type="button" onclick="removeSongEntry(${index}, ${si})" aria-label="Eliminar música"><i class="fas fa-trash"></i></button>
 
-                                        <div class="spotify-cover">
+                                        <div class="spotify-cover" onclick="triggerAudioUpload(${index}, ${si}); event.stopPropagation();" title="Pulsa para elegir audio">
                                             ${isJuly2023 ? `<img src="${JULY_2023_DEFAULT_TRACK.coverSrc}" alt="Portada de ${JULY_2023_DEFAULT_TRACK.title}">` : `<div class="spotify-cover-placeholder" aria-hidden="true"><i class="fas fa-music"></i></div>`}
                                         </div>
 
@@ -1057,10 +1063,7 @@ function renderMonths() {
                                             <button class="spotify-btn" type="button" data-action="faster" aria-label="Avanzar"><i class="fas fa-forward-step"></i></button>
                                         </div>
 
-                                        <label class="spotify-upload">
-                                            <input type="file" class="audio-file-input" data-song-index="${si}" accept="audio/*">
-                                            <span>Cambiar canción</span>
-                                        </label>
+                                        <input type="file" class="audio-file-input spotify-audio-input" id="audioInput-${index}-${si}" data-song-index="${si}" accept="audio/*">
 
                                         <audio class="audio-player hidden-audio" preload="metadata" data-audio-key="${getAudioKey(safeMonth.id ?? index, si)}"></audio>
                                     </div>
@@ -1088,7 +1091,7 @@ function renderMonths() {
                                 <div class="media-item">
                                     <div class="media-row">
                                         <input type="url" class="media-input video-input" id="videoUrl-${index}-${vi}" placeholder="Enlace de video" value="${escapeAttribute(v)}">
-                                        <button class="media-x-btn" type="button" onclick="removeVideoEntry(${index}, ${vi})" aria-label="Eliminar vídeo">×</button>
+                                        <button class="media-x-btn" type="button" onclick="removeVideoEntry(${index}, ${vi})" aria-label="Eliminar vídeo"><i class="fas fa-trash"></i></button>
                                     </div>
                                     ${v ? `<div class="media-preview">${renderMediaPreview(v, 'video')}</div>` : ''}
                                 </div>

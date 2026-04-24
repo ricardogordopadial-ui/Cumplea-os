@@ -1449,6 +1449,7 @@ body {
     align-items: center;
     justify-content: center;
     margin-bottom: 12px;
+    cursor: pointer;
 }
 
 .spotify-cover img {
@@ -1589,30 +1590,8 @@ body {
     background: #fff;
 }
 
-.spotify-upload {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    margin-top: 12px;
-    cursor: pointer;
-}
-
-.spotify-upload input {
+.spotify-audio-input {
     display: none;
-}
-
-.spotify-upload span {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 8px 14px;
-    border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.18);
-    background: rgba(255, 255, 255, 0.10);
-    color: rgba(255, 255, 255, 0.92);
-    font-weight: 700;
-    font-size: 0.85rem;
 }
 
 @media (max-width: 640px) {
