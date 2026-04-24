@@ -402,6 +402,7 @@ body {
     .month-page {
         overflow-y: auto;
         overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
     }
 }
 
@@ -615,12 +616,15 @@ body {
     align-items: stretch;
 }
 
-/* Mobile: 1 columna en pantallas pequeñas */
+/* Mobile: 1 columna y scroll natural */
 @media (max-width: 768px) {
     .month-content {
         grid-template-columns: 1fr;
         gap: 10px;
         margin-bottom: 8px;
+        overflow: visible;
+        flex: initial;
+        min-height: auto;
     }
 }
 
