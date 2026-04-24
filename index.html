@@ -15,6 +15,10 @@
         <div class="cover-content">
             <div class="cover-photo-wrap" onclick="document.getElementById('coverPhotoInput').click()" title="Pulsa para subir foto de portada">
                 <img id="coverPhoto" class="cover-photo" alt="Foto de portada">
+                <div class="media-zoom-controls cover-zoom-controls" aria-label="Tamaño portada">
+                    <button class="media-zoom-btn" type="button" onclick="adjustCoverPhotoZoom(-0.1, event)" aria-label="Hacer más pequeña"><i class="fas fa-minus"></i></button>
+                    <button class="media-zoom-btn" type="button" onclick="adjustCoverPhotoZoom(0.1, event)" aria-label="Hacer más grande"><i class="fas fa-plus"></i></button>
+                </div>
                 <div id="coverPhotoPlaceholder" class="cover-photo-placeholder">
                     <i class="fas fa-camera"></i>
                     <span>Añadir foto portada</span>
