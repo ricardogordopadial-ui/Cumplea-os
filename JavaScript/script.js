@@ -25,27 +25,185 @@ let touchStartY = 0;
 let touchTracking = false;
 
 const LOVE_PHRASES = [
-    'Desde el primer momento, supe que eras especial.',
-    'Cada día contigo es un regalo que atesoro.',
-    'Tu sonrisa ilumina mi mundo entero.',
-    'Eres mi mayor bendición y mi razón de ser.',
-    'Contigo, cada momento es una aventura mágica.',
-    'Mi corazón te pertenece completamente.',
-    'Eres la razón de mis sonrisas más bonitas.',
-    'Te amo más con cada amanecer.',
-    'Eres mi mejor decisión en la vida.',
-    'Juntos formamos el cuento de hadas perfecto.'
+    'Me gustas en todas mis versiones, pero más cuando estoy contigo.',
+    'Tu risa es mi canción favorita y siempre quiero el estribillo.',
+    'Contigo, la vida se siente más ligera, más bonita y más nuestra.',
+    'Eres ese “sí” que le doy al mundo cada mañana.',
+    'A tu lado, hasta lo cotidiano se vuelve especial.',
+    'Tu abrazo tiene la calma que no sabía que necesitaba.',
+    'Si me pierdo, que sea en tus ojos y que nadie me encuentre.',
+    'Eres mi casualidad favorita y mi destino más querido.',
+    'Te elijo sin prisa, pero con ganas, todos los días.',
+    'Mi lugar favorito siempre termina siendo cerca de ti.',
+    'Que nunca nos falten planes tontos y besos serios.',
+    'Tus besos son mi manera favorita de olvidarme del reloj.',
+    'Si el amor tuviera dirección, sería la tuya.',
+    'Eres mi “quédate” incluso cuando no lo digo.',
+    'Contigo, mi corazón aprendió a sonreír de verdad.',
+    'Tu mirada me recuerda que lo bonito sí existe.',
+    'Eres la mejor parte de mi historia y lo sabes.',
+    'Te pienso y se me acomoda el día entero.',
+    'Tu nombre suena a hogar en mi cabeza.',
+    'No hay suerte más grande que haberte encontrado.',
+    'Me encantan tus manías; ya son parte de mí.',
+    'Eres mi persona favorita para hacer nada… y todo.',
+    'Que la vida nos siga sorprendiendo juntos.',
+    'Tu sonrisa me salva, siempre, sin pedir permiso.',
+    'Eres mi paz y también mi aventura.',
+    'Me enamoras con detalles que ni tú notas.',
+    'Donde estés tú, ahí quiero mis domingos.',
+    'Eres el “por fin” que no sabía que esperaba.',
+    'Tu amor me queda perfecto.',
+    'Me haces creer en lo bonito sin esfuerzo.',
+    'En tus brazos caben mis miedos y se van quedando pequeños.',
+    'Eres el motivo por el que me sale querer mejor.',
+    'Me gusta cómo me miras: como si todo fuera posible.',
+    'Gracias por ser mi lugar seguro y mi locura favorita.',
+    'Contigo, cada mes tiene algo que celebrar.',
+    'Si me dan a elegir, te elijo en todas las vidas.',
+    'Tu amor tiene la medida exacta de lo que necesitaba.',
+    'Eres mi mejor “qué tal si…” hecho realidad.',
+    'Me haces feliz de una manera tranquila y eterna.',
+    'Tus abrazos deberían recetarlos en las farmacias.',
+    'Eres el mensaje que siempre quiero leer.',
+    'A tu lado, hasta el silencio se siente bonito.',
+    'Me encanta que seamos equipo.',
+    'Tu existencia es mi suerte diaria.',
+    'Eres mi chispa, mi calma y mi casa.',
+    'Contigo, los días grises se pintan solos.',
+    'No sé qué hice para merecerte, pero gracias.',
+    'Tú y yo: mi combinación favorita.',
+    'Eres el detalle más grande de mi vida.',
+    'Que nunca nos falte amor… ni ganas.',
+    'Mi corazón te reconoce incluso con los ojos cerrados.',
+    'Tu amor me hace valiente.',
+    'Eres el beso que siempre quiero repetir.',
+    'Mi parte favorita del día es cuando apareces.',
+    'Tu risa me cura el cansancio.',
+    'Te amo en presente, en futuro y en cada plan.',
+    'Eres mi sorpresa bonita.',
+    'Te quiero así: sin medida y con intención.',
+    'Contigo, mi vida tiene brillo.',
+    'Eres la coincidencia más perfecta.',
+    'A tu lado, el mundo se siente menos mundo y más nosotros.',
+    'Que este amor crezca sin prisa, pero sin pausa.',
+    'Tu mano en la mía y ya está todo bien.',
+    'Eres mi mejor decisión repetida.',
+    'Me gusta nuestra historia: sincera, loca y bonita.',
+    'Eres mi descanso y mi fiesta.',
+    'Te elijo hoy, y mañana también.',
+    'Tenerte es mi lujo favorito.',
+    'Eres mi alegría con nombre.',
+    'Lo nuestro es mi parte favorita del calendario.',
+    'Eres mi “qué suerte” hecho persona.',
+    'Tu amor me hace sentir en casa en cualquier lugar.',
+    'Eres ese milagro que llegó sin avisar.',
+    'Qué bonito coincidir contigo en este mundo.',
+    'Te quiero de esos quereres que se quedan.',
+    'Eres mi razón bonita para sonreír.',
+    'Si la vida se complica, te abrazo y ya.',
+    'Eres mi plan favorito sin fecha.',
+    'Gracias por ser tú y por elegirme también.'
 ];
-const PHRASE_EMOJIS = ['💖', '💕', '💘', '💞', '💓', '🥰', '😍', '💗', '💝', '🧡', '🌹', '✨'];
+
+const PHRASE_EMOJIS = [
+    '💖', '💘', '💝', '💞', '💕', '💗', '💓', '🫶', '🥰', '😍', '😘', '💌',
+    '🌹', '🌸', '🌷', '🌺', '🌻', '🍓', '🍯', '🍫', '🧁', '🍰', '🎂', '🎈',
+    '🎀', '🎁', '🎉', '🎊', '✨', '🌟', '⭐', '💫', '🌙', '☀️', '🌈', '🫧',
+    '🦋', '🐻', '🧸', '🐣', '🐰', '🦊', '🐼', '🐶', '🐱', '🕊️', '🪻', '🍀',
+    '🧡', '💛', '💚', '💙', '💜', '🤍', '❤️', '🩷', '🩵', '🩶', '🖤', '❤️‍🔥',
+    '🎶', '🎧', '📸', '📖', '🗓️', '🧭', '🧿', '🪄', '🧨', '🎆', '🎇', '🥳',
+    '☕', '🍵', '🫠', '😌', '😊', '🤭', '🫰', '🤝', '🫂', '🏡', '🛋️', '🧩'
+];
+
+function pickFirstUnused(list, used) {
+    return list.find(item => !used.has(item)) || '';
+}
+
+function generateFallbackPhrase(usedPhrases, referenceDate) {
+    const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    const label = referenceDate instanceof Date
+        ? `${monthNames[referenceDate.getMonth()]} ${referenceDate.getFullYear()}`
+        : 'este mes';
+
+    let counter = 1;
+    let candidate = `Un capítulo nuevo de lo nuestro en ${label}.`;
+    while (usedPhrases.has(candidate)) {
+        counter += 1;
+        candidate = `Un capítulo nuevo de lo nuestro en ${label} (${counter}).`;
+    }
+    return candidate;
+}
+
+function generateFallbackEmoji(usedEmojis) {
+    const fallbacks = ['🧡', '💙', '💜', '🤍', '🖤', '💛', '💚', '🩷', '🩵', '🩶', '💫', '⭐', '🌟', '✨'];
+    return pickFirstUnused(fallbacks, usedEmojis) || '✨';
+}
+
+function pickUniquePhraseAndEmoji(existingMonths = [], referenceDate = null) {
+    const usedPhrases = new Set();
+    const usedEmojis = new Set();
+
+    if (Array.isArray(existingMonths)) {
+        existingMonths.forEach((m) => {
+            const phrase = m && typeof m.phrase === 'string' ? m.phrase.trim() : '';
+            const emoji = m && typeof m.phraseEmoji === 'string' ? m.phraseEmoji.trim() : '';
+            if (phrase) usedPhrases.add(phrase);
+            if (emoji) usedEmojis.add(emoji);
+        });
+    }
+
+    return pickUniquePhraseAndEmojiFromSets(usedPhrases, usedEmojis, referenceDate);
+}
+
+function pickUniquePhraseAndEmojiFromSets(usedPhrases, usedEmojis, referenceDate = null) {
+    const phrase = pickFirstUnused(LOVE_PHRASES, usedPhrases) || generateFallbackPhrase(usedPhrases, referenceDate);
+    usedPhrases.add(phrase);
+
+    const emoji = pickFirstUnused(PHRASE_EMOJIS, usedEmojis) || generateFallbackEmoji(usedEmojis);
+    usedEmojis.add(emoji);
+
+    return { phrase, emoji };
+}
+
+function ensureAllMonthsHaveUniquePhraseAndEmoji() {
+    const usedPhrases = new Set();
+    const usedEmojis = new Set();
+
+    for (let i = 0; i < months.length; i += 1) {
+        const m = normalizeMonthData(months[i]);
+        const referenceDate = new Date(m.year, monthNameToIndex(m.month), 1);
+
+        let phrase = typeof m.phrase === 'string' ? m.phrase.trim() : '';
+        if (!phrase || usedPhrases.has(phrase)) {
+            phrase = pickFirstUnused(LOVE_PHRASES, usedPhrases) || generateFallbackPhrase(usedPhrases, referenceDate);
+        }
+        usedPhrases.add(phrase);
+
+        let emoji = typeof m.phraseEmoji === 'string' ? m.phraseEmoji.trim() : '';
+        if (!emoji || usedEmojis.has(emoji)) {
+            emoji = pickFirstUnused(PHRASE_EMOJIS, usedEmojis) || generateFallbackEmoji(usedEmojis);
+        }
+        usedEmojis.add(emoji);
+
+        months[i] = {
+            ...m,
+            phrase,
+            phraseEmoji: emoji
+        };
+    }
+}
 
 function createDefaultMonth(referenceDate = new Date()) {
     const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    const { phrase, emoji } = pickUniquePhraseAndEmoji(months, referenceDate);
 
     return {
         id: Date.now() + Math.floor(Math.random() * 10000),
         month: monthNames[referenceDate.getMonth()],
         year: referenceDate.getFullYear(),
-        phrase: LOVE_PHRASES[Math.floor(Math.random() * LOVE_PHRASES.length)],
+        phrase,
+        phraseEmoji: emoji,
         images: ['', '', '', ''],
         texts: [''],
         coordinates: [...SPECIAL_PLACE_COORDS],
@@ -66,14 +224,17 @@ function initializeMonths() {
     const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 
     let currentDate = new Date(startDate);
-    let phraseIndex = 0;
+    const usedPhrases = new Set();
+    const usedEmojis = new Set();
 
     while (currentDate <= endDate) {
+        const { phrase, emoji } = pickUniquePhraseAndEmojiFromSets(usedPhrases, usedEmojis, currentDate);
         const monthData = {
             id: months.length,
             month: monthNames[currentDate.getMonth()],
             year: currentDate.getFullYear(),
-            phrase: LOVE_PHRASES[phraseIndex % LOVE_PHRASES.length],
+            phrase,
+            phraseEmoji: emoji,
             images: ['', '', '', ''],
             text: '',
             coordinates: [...SPECIAL_PLACE_COORDS],
@@ -93,7 +254,6 @@ function initializeMonths() {
 
         months.push(monthData);
         currentDate.setMonth(currentDate.getMonth() + 1);
-        phraseIndex += 1;
     }
 
     persistMonths();
@@ -117,6 +277,8 @@ function normalizeMonthData(monthData) {
         ...monthData,
         images: Array.isArray(monthData.images) ? monthData.images : ['', '', '', ''],
         texts: Array.isArray(monthData.texts) ? monthData.texts : (monthData.text ? [monthData.text] : ['']),
+        phrase: typeof monthData.phrase === 'string' ? monthData.phrase : '',
+        phraseEmoji: typeof monthData.phraseEmoji === 'string' ? monthData.phraseEmoji : '',
         coordinates: Array.isArray(monthData.coordinates) && monthData.coordinates.length === 2
             ? monthData.coordinates
             : [...SPECIAL_PLACE_COORDS],
@@ -368,9 +530,10 @@ function saveCurrentMonth() {
     alert('Mes guardado correctamente.');
 }
 
-function getPhraseWithEmoji(phrase, index) {
-    const emoji = PHRASE_EMOJIS[index % PHRASE_EMOJIS.length];
-    return `${phrase} ${emoji}`;
+function getPhraseWithEmoji(phrase, emoji) {
+    const safePhrase = (typeof phrase === 'string' ? phrase : '').trim();
+    const safeEmoji = (typeof emoji === 'string' ? emoji : '').trim();
+    return `${safePhrase} ${safeEmoji}`.trim();
 }
 
 function renderMonths() {
@@ -400,7 +563,7 @@ function renderMonths() {
             </div>
             <div class="month-header">
                 <h2 class="month-title">${monthData.month} ${monthData.year}</h2>
-                <p class="love-quote">"${getPhraseWithEmoji(safeMonth.phrase, index)}"</p>
+                <p class="love-quote">"${getPhraseWithEmoji(safeMonth.phrase, safeMonth.phraseEmoji || PHRASE_EMOJIS[index % PHRASE_EMOJIS.length])}"</p>
                 ${(safeMonth.month === 'Enero' && safeMonth.year === 2023) ? `
                 <button class="special-button title-map-btn" onclick="openSpecialPlace('january2023')">
                     <i class="fas fa-map-location-dot"></i> ${SPECIAL_PLACES.january2023.buttonText}
@@ -623,6 +786,7 @@ function addMonth() {
     const newMonth = createDefaultMonth(refDate);
 
     months.push(newMonth);
+    ensureAllMonthsHaveUniquePhraseAndEmoji();
     persistMonths();
 
     currentMonth = months.length - 1;
@@ -693,6 +857,7 @@ function closeMapModal() {
 }
 
 function startBook() {
+    stopCoverEffects();
     document.getElementById('coverPage').style.display = 'none';
     document.getElementById('bookContainer').classList.add('active');
     currentMonth = Math.min(currentMonth, months.length - 1);
@@ -702,6 +867,7 @@ function startBook() {
 function goToCover() {
     document.getElementById('bookContainer').classList.remove('active');
     document.getElementById('coverPage').style.display = 'flex';
+    startCoverEffects();
 }
 
 function isBookActive() {
@@ -796,20 +962,27 @@ function loadBook() {
     }
 
     months = months.map((monthData) => normalizeMonthData(monthData));
+    ensureAllMonthsHaveUniquePhraseAndEmoji();
+    persistMonths();
 
     renderMonths();
 }
 
 function generateCoverEmojis() {
     const layer = document.getElementById('coverEmojiLayer');
-    const emojis = ['💍', '💏', '💘', '💖', '💞', '💕', '😍', '🥰', '💌', '🌹', '✨', '🧸', '❤️', '🌟', '💝', '🐻', '💗', '🌸'];
+    const emojis = [
+        '🎆', '🎇', '🎉', '🎊', '🎈', '🎁', '🎂', '🧁', '🍰', '🥳', '🕯️',
+        '💍', '💏', '💘', '💖', '💞', '💕', '😍', '🥰', '💌', '🌹', '✨', '🧸', '❤️', '🌟', '💝', '🐻', '💗', '🌸'
+    ];
 
     layer.innerHTML = '';
 
-    for (let i = 0; i < 54; i += 1) {
+    const count = window.innerWidth <= 640 ? 44 : 72;
+
+    for (let i = 0; i < count; i += 1) {
         const span = document.createElement('span');
         span.className = 'emoji-animation';
-        span.textContent = emojis[i % emojis.length];
+        span.textContent = emojis[Math.floor(Math.random() * emojis.length)];
 
         let left = Math.random() * 92 + 4;
         let top = Math.random() * 86 + 4;
@@ -826,6 +999,215 @@ function generateCoverEmojis() {
         span.style.animationDuration = `${3 + Math.random() * 2.2}s`;
         span.style.fontSize = `${1.2 + Math.random() * 2.2}rem`;
         layer.appendChild(span);
+    }
+}
+
+let coverFireworksController = null;
+let coverTypedTimeoutId = null;
+let coverTypedLoopTimeoutId = null;
+let coverTypedRunning = false;
+
+function clearCoverTypedTimers() {
+    if (coverTypedTimeoutId) {
+        clearTimeout(coverTypedTimeoutId);
+        coverTypedTimeoutId = null;
+    }
+    if (coverTypedLoopTimeoutId) {
+        clearTimeout(coverTypedLoopTimeoutId);
+        coverTypedLoopTimeoutId = null;
+    }
+}
+
+function startTypedBirthdayMessage() {
+    const target = document.getElementById('birthdayTyped');
+    if (!target) return;
+
+    const text = 'Feliz cumpleaños amor';
+    clearCoverTypedTimers();
+    coverTypedRunning = true;
+    target.textContent = '';
+
+    let index = 0;
+    const step = () => {
+        if (!coverTypedRunning) return;
+        index += 1;
+        target.textContent = text.slice(0, index);
+
+        if (index < text.length) {
+            coverTypedTimeoutId = setTimeout(step, 55 + Math.random() * 55);
+            return;
+        }
+
+        coverTypedLoopTimeoutId = setTimeout(() => {
+            if (!coverTypedRunning) return;
+            index = 0;
+            target.textContent = '';
+            coverTypedTimeoutId = setTimeout(step, 500);
+        }, 2600);
+    };
+
+    coverTypedTimeoutId = setTimeout(step, 450);
+}
+
+function stopTypedBirthdayMessage() {
+    coverTypedRunning = false;
+    clearCoverTypedTimers();
+}
+
+function createCoverFireworksController() {
+    const canvas = document.getElementById('fireworksCanvas');
+    const cover = document.getElementById('coverPage');
+    if (!canvas || !cover) return null;
+
+    const ctx = canvas.getContext('2d', { alpha: true });
+    if (!ctx) return null;
+
+    const state = {
+        running: false,
+        rafId: 0,
+        lastTs: 0,
+        nextBurstMs: 900,
+        burstElapsedMs: 0,
+        width: 1,
+        height: 1,
+        dpr: 1,
+        particles: []
+    };
+
+    const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const resize = () => {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = Math.min(2, window.devicePixelRatio || 1);
+        state.dpr = dpr;
+        state.width = Math.max(1, rect.width);
+        state.height = Math.max(1, rect.height);
+
+        canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+        canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, state.width, state.height);
+    };
+
+    const addBurst = (x, y, intensity = 1) => {
+        const baseHue = Math.random() * 360;
+        const isSmall = state.width < 520;
+        const count = Math.floor((isSmall ? 48 : 82) * intensity);
+        const power = (isSmall ? 165 : 230) * intensity;
+
+        for (let i = 0; i < count; i += 1) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = power * (0.35 + Math.random() * 0.75);
+            const hue = (baseHue + (Math.random() * 60 - 30) + 360) % 360;
+            const life = 0.95 + Math.random() * 0.65;
+
+            state.particles.push({
+                x,
+                y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                hue,
+                life,
+                maxLife: life,
+                size: 1.2 + Math.random() * 1.9
+            });
+        }
+    };
+
+    const tick = (ts) => {
+        if (!state.running) return;
+
+        const dt = state.lastTs ? Math.min(0.034, (ts - state.lastTs) / 1000) : 0.016;
+        state.lastTs = ts;
+
+        ctx.clearRect(0, 0, state.width, state.height);
+
+        const gravity = 240;
+        const drag = 0.985;
+
+        for (let i = state.particles.length - 1; i >= 0; i -= 1) {
+            const p = state.particles[i];
+            p.life -= dt;
+            if (p.life <= 0) {
+                state.particles.splice(i, 1);
+                continue;
+            }
+
+            p.vx *= drag;
+            p.vy = p.vy * drag + gravity * dt;
+            p.x += p.vx * dt;
+            p.y += p.vy * dt;
+
+            const alpha = Math.max(0, Math.min(1, p.life / p.maxLife));
+            ctx.fillStyle = `hsla(${p.hue}, 100%, 65%, ${alpha})`;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        state.burstElapsedMs += dt * 1000;
+        if (state.burstElapsedMs >= state.nextBurstMs) {
+            state.burstElapsedMs = 0;
+            state.nextBurstMs = 650 + Math.random() * 900;
+
+            const x = state.width * (0.16 + Math.random() * 0.68);
+            const y = state.height * (0.12 + Math.random() * 0.36);
+            addBurst(x, y, 1);
+        }
+
+        state.rafId = requestAnimationFrame(tick);
+    };
+
+    const onPointerDown = (event) => {
+        if (!state.running) return;
+        const rect = cover.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        addBurst(x, y, 1.05);
+    };
+
+    const start = () => {
+        if (prefersReducedMotion) return;
+        if (state.running) return;
+        state.running = true;
+        state.lastTs = 0;
+        state.burstElapsedMs = 0;
+        state.nextBurstMs = 700 + Math.random() * 750;
+        resize();
+        window.addEventListener('resize', resize, { passive: true });
+        cover.addEventListener('pointerdown', onPointerDown, { passive: true });
+        state.rafId = requestAnimationFrame(tick);
+    };
+
+    const stop = () => {
+        if (!state.running) return;
+        state.running = false;
+        if (state.rafId) cancelAnimationFrame(state.rafId);
+        state.rafId = 0;
+        window.removeEventListener('resize', resize);
+        cover.removeEventListener('pointerdown', onPointerDown);
+        ctx.clearRect(0, 0, state.width, state.height);
+        state.particles = [];
+    };
+
+    return { start, stop };
+}
+
+function startCoverEffects() {
+    startTypedBirthdayMessage();
+
+    if (!coverFireworksController) {
+        coverFireworksController = createCoverFireworksController();
+    }
+    if (coverFireworksController) {
+        coverFireworksController.start();
+    }
+}
+
+function stopCoverEffects() {
+    stopTypedBirthdayMessage();
+    if (coverFireworksController) {
+        coverFireworksController.stop();
     }
 }
 
@@ -871,5 +1253,6 @@ document.addEventListener('click', (event) => {
 
 loadBook();
 generateCoverEmojis();
+startCoverEffects();
 loadCoverPhoto();
 registerPageNavigationInputs();
