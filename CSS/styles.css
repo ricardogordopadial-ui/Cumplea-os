@@ -664,6 +664,7 @@ body {
     grid-template-rows: 1fr;
     aspect-ratio: 1;
     min-height: 380px;
+    padding: 0;
 }
 
 /* Reducir altura en móviles */
@@ -671,6 +672,14 @@ body {
     .image-gallery.single-image {
         min-height: 220px;
     }
+}
+
+.image-gallery.single-image .image-placeholder {
+    border-radius: 10px;
+}
+
+.image-gallery.single-image .image-placeholder img {
+    border-radius: 10px;
 }
 
 .image-placeholder {
