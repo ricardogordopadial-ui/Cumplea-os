@@ -362,9 +362,26 @@ function performMediaAction(index, action, type, target = 'all') {
             return;
         }
 
-        if (type === 'texto') month.showText = true;
-        if (type === 'musica') month.showMusic = true;
-        if (type === 'video') month.showVideo = true;
+        if (type === 'texto') {
+            month.showText = true;
+            if (!Array.isArray(month.texts) || month.texts.length === 0) {
+                month.texts = [''];
+            }
+        }
+
+        if (type === 'musica') {
+            month.showMusic = true;
+            if (!Array.isArray(month.songUrls) || month.songUrls.length === 0) {
+                month.songUrls = [''];
+            }
+        }
+
+        if (type === 'video') {
+            month.showVideo = true;
+            if (!Array.isArray(month.videoUrls) || month.videoUrls.length === 0) {
+                month.videoUrls = [''];
+            }
+        }
 
         persistMonths();
         rerenderCurrentMonth();
@@ -581,57 +598,68 @@ function renderMonths() {
             </div>
 
             <div class="month-content ${gridClass}">
-                ${safeMonth.showPhotos ? `
-                <div class="content-section photos-section">
-                    <h3 class="section-title">📷 Nuestros momentos</h3>
-                    <div class="image-gallery ${galleryClass}">
-                        ${Array.isArray(safeMonth.images) ? safeMonth.images.map((img, i) => {
-                            // Para Enero 2023: solo mostrar imágenes que existan o la primera posición vacía
-                            if (isJanuary2023) {
-                                if (img) {
-                                    return `<div class="image-placeholder" onclick="triggerImageUpload(${index}, ${i})"><img src="${img}" alt="Imagen ${i + 1}"></div>`;
-                                } else if (i === 0) {
-                                    return `<div class="image-placeholder" onclick="triggerImageUpload(${index}, ${i})"><i class="fas fa-plus" style="font-size:2rem;color:#FF6B35;"></i></div>`;
+                ${(safeMonth.showPhotos || safeMonth.showMusic) ? `
+                <div class="content-section photos-section ${safeMonth.showMusic ? 'has-music' : ''}">
+                    ${safeMonth.showPhotos ? `
+                        <h3 class="section-title">📷 Nuestros momentos</h3>
+                        <div class="image-gallery ${galleryClass}">
+                            ${Array.isArray(safeMonth.images) ? safeMonth.images.map((img, i) => {
+                                // Para Enero 2023: solo mostrar imágenes que existan o la primera posición vacía
+                                if (isJanuary2023) {
+                                    if (img) {
+                                        return `<div class="image-placeholder" onclick="triggerImageUpload(${index}, ${i})"><img src="${img}" alt="Imagen ${i + 1}"></div>`;
+                                    } else if (i === 0) {
+                                        return `<div class="image-placeholder" onclick="triggerImageUpload(${index}, ${i})"><i class="fas fa-plus" style="font-size:2rem;color:#FF6B35;"></i></div>`;
+                                    }
+                                    return '';
+                                } else {
+                                    return `<div class="image-placeholder" onclick="triggerImageUpload(${index}, ${i})">
+                                        ${img ? `<img src="${img}" alt="Imagen ${i + 1}">` : '<i class="fas fa-plus" style="font-size:2rem;color:#FF6B35;"></i>'}
+                                    </div>`;
                                 }
-                                return '';
-                            } else {
-                                return `<div class="image-placeholder" onclick="triggerImageUpload(${index}, ${i})">
-                                    ${img ? `<img src="${img}" alt="Imagen ${i + 1}">` : '<i class="fas fa-plus" style="font-size:2rem;color:#FF6B35;"></i>'}
-                                </div>`;
-                            }
-                        }).join('') : ''}
-                    </div>
-                    <input type="file" class="image-input" id="imageInput-${index}" accept="image/*">
-                </div>` : ''}
-
-                ${safeMonth.showText ? `
-                <div class="content-section text-section">
-                    <h3 class="section-title">💬 Mi historia contigo este mes</h3>
-                    ${Array.isArray(safeMonth.texts) ? safeMonth.texts.map((t, ti) => {
-                        const defaultText = isJanuary2023 ? 'Amor mío, ese mes fue el que cambió mi vida para siempre 💘. El día 28 entré por la puerta de ese pub sin saber que mi destino estaba esperándome allí. Y entonces te vi, reina mía, y me quedé sin palabras, sin aire, sin poder pensar en nada más que en ti 😍. Recuerdo que al irme solo tenía una cosa en la mente: volverte loca, conquistarte y hacerte mi novia, bb, porque fue un flechazo a primera vista 💕. Mi corazón se entregó completamente en ese instante ❤️✨. Eres lo mejor que me ha pasado, amor 🥰.' : '';
-                        const textContent = t || defaultText;
-                        return `<textarea class="text-area" id="text-${index}-${ti}" placeholder="Cuéntame qué pasó este mes...">${textContent}</textarea>`;
-                    }).join('') : `<textarea class="text-area" id="text-${index}-0" placeholder="Cuéntame qué pasó este mes...">${safeMonth.text || (isJanuary2023 ? 'Amor mío, ese mes fue el que cambió mi vida para siempre 💘. El día 28 entré por la puerta de ese pub sin saber que mi destino estaba esperándome allí. Y entonces te vi, reina mía, y me quedé sin palabras, sin aire, sin poder pensar en nada más que en ti 😍. Recuerdo que al irme solo tenía una cosa en la mente: volverte loca, conquistarte y hacerte mi novia, bb, porque fue un flechazo a primera vista 💕. Mi corazón se entregó completamente en ese instante ❤️✨. Eres lo mejor que me ha pasado, amor 🥰.' : '')}</textarea>`}
-                </div>` : ''}
-
-                ${(safeMonth.showMusic || safeMonth.showVideo) ? `
-                <div class="content-section media-content">
-                    <h3 class="section-title">🎵 Música y 🎬 Video</h3>
-                    ${safeMonth.showMusic ? `
-                        ${Array.isArray(safeMonth.songUrls) ? safeMonth.songUrls.map((s, si) => `
-                            <div class="media-row">
-                                <input type="url" class="media-input song-input" id="songUrl-${index}-${si}" placeholder="Enlace de música" value="${escapeAttribute(s)}">
-                                ${s ? `<div class="media-preview">${renderMediaPreview(s, 'song')}</div>` : ''}
-                            </div>
-                        `).join('') : `<div class="media-row"><input type="url" class="media-input song-input" id="songUrl-${index}-0" value="${escapeAttribute(safeMonth.songUrl)}"></div>`}
+                            }).join('') : ''}
+                        </div>
+                        <input type="file" class="image-input" id="imageInput-${index}" accept="image/*">
                     ` : ''}
+
+                    ${safeMonth.showMusic ? `
+                        <div class="media-dotted media-dotted-music">
+                            <h3 class="section-title">🎵 Música</h3>
+                            ${(Array.isArray(safeMonth.songUrls) ? safeMonth.songUrls : []).map((s, si) => `
+                                <div class="media-item">
+                                    <div class="media-row">
+                                        <input type="url" class="media-input song-input" id="songUrl-${index}-${si}" placeholder="Enlace de música" value="${escapeAttribute(s)}">
+                                    </div>
+                                    ${s ? `<div class="media-preview">${renderMediaPreview(s, 'song')}</div>` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                </div>` : ''}
+
+                ${(safeMonth.showText || safeMonth.showVideo) ? `
+                <div class="content-section text-section ${safeMonth.showVideo ? 'has-video' : ''}">
+                    ${safeMonth.showText ? `
+                        <h3 class="section-title">💬 Mi historia contigo este mes</h3>
+                        ${Array.isArray(safeMonth.texts) ? safeMonth.texts.map((t, ti) => {
+                            const defaultText = isJanuary2023 ? 'Amor mío, ese mes fue el que cambió mi vida para siempre 💘. El día 28 entré por la puerta de ese pub sin saber que mi destino estaba esperándome allí. Y entonces te vi, reina mía, y me quedé sin palabras, sin aire, sin poder pensar en nada más que en ti 😍. Recuerdo que al irme solo tenía una cosa en la mente: volverte loca, conquistarte y hacerte mi novia, bb, porque fue un flechazo a primera vista 💕. Mi corazón se entregó completamente en ese instante ❤️✨. Eres lo mejor que me ha pasado, amor 🥰.' : '';
+                            const textContent = t || defaultText;
+                            return `<textarea class="text-area" id="text-${index}-${ti}" placeholder="Cuéntame qué pasó este mes...">${textContent}</textarea>`;
+                        }).join('') : `<textarea class="text-area" id="text-${index}-0" placeholder="Cuéntame qué pasó este mes...">${safeMonth.text || (isJanuary2023 ? 'Amor mío, ese mes fue el que cambió mi vida para siempre 💘. El día 28 entré por la puerta de ese pub sin saber que mi destino estaba esperándome allí. Y entonces te vi, reina mía, y me quedé sin palabras, sin aire, sin poder pensar en nada más que en ti 😍. Recuerdo que al irme solo tenía una cosa en la mente: volverte loca, conquistarte y hacerte mi novia, bb, porque fue un flechazo a primera vista 💕. Mi corazón se entregó completamente en ese instante ❤️✨. Eres lo mejor que me ha pasado, amor 🥰.' : '')}</textarea>`}
+                    ` : ''}
+
                     ${safeMonth.showVideo ? `
-                        ${Array.isArray(safeMonth.videoUrls) ? safeMonth.videoUrls.map((v, vi) => `
-                            <div class="media-row">
-                                <input type="url" class="media-input video-input" id="videoUrl-${index}-${vi}" placeholder="Enlace de video" value="${escapeAttribute(v)}">
-                                ${v ? `<div class="media-preview">${renderMediaPreview(v, 'video')}</div>` : ''}
-                            </div>
-                        `).join('') : `<div class="media-row"><input type="url" class="media-input video-input" id="videoUrl-${index}-0" value="${escapeAttribute(safeMonth.videoUrl)}"></div>`}
+                        <div class="media-dotted media-dotted-video">
+                            <h3 class="section-title">🎬 Video</h3>
+                            ${(Array.isArray(safeMonth.videoUrls) ? safeMonth.videoUrls : []).map((v, vi) => `
+                                <div class="media-item">
+                                    <div class="media-row">
+                                        <input type="url" class="media-input video-input" id="videoUrl-${index}-${vi}" placeholder="Enlace de video" value="${escapeAttribute(v)}">
+                                    </div>
+                                    ${v ? `<div class="media-preview">${renderMediaPreview(v, 'video')}</div>` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
                     ` : ''}
                 </div>` : ''}
 
