@@ -32,6 +32,19 @@
     </div>
 
     <div class="book-container" id="bookContainer">
+        <div class="index-page" id="indexPage" aria-label="Índice de meses">
+            <div class="index-panel">
+                <div class="top-left-nav index-top-nav">
+                    <button class="action-btn cover" onclick="goToCover()"><i class="fas fa-book-open"></i> Portada</button>
+                    <button class="action-btn" onclick="closeIndex()"><i class="fas fa-arrow-left"></i> Volver</button>
+                </div>
+
+                <h2 class="index-title">Índice</h2>
+                <p class="index-subtitle">Pulsa un mes para abrirlo</p>
+                <div id="indexList" class="index-list" role="list"></div>
+            </div>
+        </div>
+
         <div class="book-content">
             <div id="monthsContainer"></div>
         </div>

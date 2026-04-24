@@ -561,6 +561,12 @@ function renderMonths() {
             <div class="heart-pulse-bg" aria-hidden="true">
                 ${Array.from({ length: 12 }, (_, heartIndex) => `<span class="pulse-heart pulse-heart-${heartIndex + 1}">💖</span>`).join('')}
             </div>
+
+            <div class="top-left-nav">
+                <button class="action-btn index" onclick="openIndex()"><i class="fas fa-list"></i> Índice</button>
+                <button class="action-btn cover" onclick="goToCover()"><i class="fas fa-book-open"></i> Portada</button>
+            </div>
+
             <div class="month-header">
                 <h2 class="month-title">${monthData.month} ${monthData.year}</h2>
                 <p class="love-quote">"${getPhraseWithEmoji(safeMonth.phrase, safeMonth.phraseEmoji || PHRASE_EMOJIS[index % PHRASE_EMOJIS.length])}"</p>
@@ -644,7 +650,6 @@ function renderMonths() {
                 </div>
                 <div class="month-counter">${index + 1} de ${months.length}</div>
                 <div class="action-buttons">
-                    <button class="action-btn cover" onclick="goToCover()"><i class="fas fa-book-open"></i> Ir a portada</button>
                     <button class="action-btn save" onclick="saveCurrentMonth()"><i class="fas fa-floppy-disk"></i> Guardar</button>
                     ${renderMediaDropdown(index, 'add', 'plus', 'Añadir multimedia', 'media')}
                     ${renderMediaDropdown(index, 'remove', 'minus', 'Quitar multimedia', 'neutral')}
@@ -713,6 +718,8 @@ function renderMonths() {
             });
         }
     });
+
+    renderIndex();
 }
 
 function triggerImageUpload(monthIndex, imageIndex) {
@@ -856,17 +863,79 @@ function closeMapModal() {
     document.getElementById('mapModal').classList.remove('active');
 }
 
+function renderIndex() {
+    const list = document.getElementById('indexList');
+    if (!list) return;
+
+    list.innerHTML = months.map((m, i) => {
+        const safe = normalizeMonthData(m);
+        const title = `${escapeAttribute(safe.month)} ${escapeAttribute(safe.year)}`;
+        return `
+            <button class="index-item" role="listitem" onclick="goToMonthFromIndex(${i})">
+                <span>${title}</span>
+                <small>${i + 1}/${months.length}</small>
+            </button>
+        `;
+    }).join('');
+}
+
+function openIndex() {
+    const indexPage = document.getElementById('indexPage');
+    if (!indexPage) return;
+
+    renderIndex();
+    indexPage.classList.add('active');
+
+    const visiblePages = document.querySelectorAll('.month-page.active, .month-page.animating');
+    visiblePages.forEach((page) => {
+        page.classList.remove(
+            'active',
+            'animating',
+            'page-in-forward',
+            'page-in-backward',
+            'page-out-forward',
+            'page-out-backward'
+        );
+    });
+}
+
+function closeIndex() {
+    const indexPage = document.getElementById('indexPage');
+    if (!indexPage) return;
+    indexPage.classList.remove('active');
+
+    if (isBookActive()) {
+        currentMonth = Math.min(currentMonth, months.length - 1);
+        showMonth(currentMonth, 'forward');
+    }
+}
+
+function goToMonthFromIndex(index) {
+    const targetIndex = Number(index);
+    if (!Number.isFinite(targetIndex)) return;
+    if (targetIndex < 0 || targetIndex >= months.length) return;
+
+    const indexPage = document.getElementById('indexPage');
+    if (indexPage) indexPage.classList.remove('active');
+
+    currentMonth = targetIndex;
+    showMonth(currentMonth, 'forward');
+}
+
 function startBook() {
     stopCoverEffects();
+    closeIndex();
     document.getElementById('coverPage').style.display = 'none';
     document.getElementById('bookContainer').classList.add('active');
-    currentMonth = Math.min(currentMonth, months.length - 1);
+    currentMonth = 0;
     showMonth(currentMonth, 'forward');
 }
 
 function goToCover() {
     document.getElementById('bookContainer').classList.remove('active');
     document.getElementById('coverPage').style.display = 'flex';
+    const indexPage = document.getElementById('indexPage');
+    if (indexPage) indexPage.classList.remove('active');
     startCoverEffects();
 }
 
@@ -878,9 +947,11 @@ function isBookActive() {
 function registerPageNavigationInputs() {
     document.addEventListener('keydown', (event) => {
         const modalOpen = document.getElementById('mapModal').classList.contains('active');
+        const indexOpen = document.getElementById('indexPage')?.classList.contains('active');
 
         if (!isBookActive()) return;
         if (modalOpen) return;
+        if (indexOpen) return;
 
         const target = event.target;
         const isTypingTarget = target && (
@@ -905,6 +976,7 @@ function registerPageNavigationInputs() {
     monthsContainer.addEventListener('touchstart', (event) => {
         if (!isBookActive()) return;
         if (document.getElementById('mapModal').classList.contains('active')) return;
+        if (document.getElementById('indexPage')?.classList.contains('active')) return;
         if (!event.touches || event.touches.length === 0) return;
 
         const touch = event.touches[0];
@@ -917,6 +989,7 @@ function registerPageNavigationInputs() {
         if (!touchTracking || !isBookActive()) return;
         touchTracking = false;
         if (document.getElementById('mapModal').classList.contains('active')) return;
+        if (document.getElementById('indexPage')?.classList.contains('active')) return;
         if (!event.changedTouches || event.changedTouches.length === 0) return;
 
         const touch = event.changedTouches[0];
