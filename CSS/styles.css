@@ -56,6 +56,20 @@ body {
     animation-delay: 1.8s;
 }
 
+/* Emojis más pequeños en móviles */
+@media (max-width: 640px) {
+    .cover-page::before {
+        font-size: 1rem;
+        top: 10%;
+    }
+    
+    .cover-page::after {
+        font-size: 0.95rem;
+        bottom: 8%;
+        right: 4%;
+    }
+}
+
 .cover-emoji-layer {
     position: absolute;
     inset: 0;
@@ -98,6 +112,14 @@ body {
     box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
 }
 
+/* Mobile cover content */
+@media (max-width: 640px) {
+    .cover-content {
+        padding: 16px 16px 18px;
+        border-radius: 14px;
+    }
+}
+
 .cover-photo-wrap {
     width: min(320px, 70vw);
     aspect-ratio: 4 / 3;
@@ -109,6 +131,14 @@ body {
     cursor: pointer;
     background: rgba(255, 255, 255, 0.15);
     position: relative;
+}
+
+/* Mobile cover photo */
+@media (max-width: 640px) {
+    .cover-photo-wrap {
+        width: min(280px, 80vw);
+        margin-bottom: 16px;
+    }
 }
 
 .cover-photo {
@@ -165,11 +195,26 @@ body {
     letter-spacing: 2px;
 }
 
+/* Mobile title */
+@media (max-width: 640px) {
+    .cover-title {
+        margin-bottom: 12px;
+        letter-spacing: 1px;
+    }
+}
+
 .cover-subtitle {
     font-size: clamp(1rem, 2.5vw, 1.5rem);
     color: rgba(255, 255, 255, 0.95);
     margin-bottom: 40px;
     font-style: italic;
+}
+
+/* Mobile subtitle */
+@media (max-width: 640px) {
+    .cover-subtitle {
+        margin-bottom: 24px;
+    }
 }
 
 .start-button {
@@ -183,6 +228,14 @@ body {
     font-weight: 700;
     transition: all 0.3s ease;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+/* Mobile button */
+@media (max-width: 640px) {
+    .start-button {
+        padding: 14px 32px;
+        font-size: 1rem;
+    }
 }
 
 .start-button:hover {
@@ -243,9 +296,29 @@ body {
     backface-visibility: hidden;
 }
 
+/* Mobile: hasta 640px */
+@media (max-width: 640px) {
+    .month-page {
+        width: 98%;
+        height: 98%;
+        top: 1%;
+        border-radius: 12px;
+        padding: 16px 16px 12px;
+        max-width: none;
+    }
+}
+
 .month-page > * {
     position: relative;
     z-index: 1;
+}
+
+/* Permitir scroll en móviles */
+@media (max-width: 768px) {
+    .month-page {
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
 }
 
 .heart-pulse-bg {
@@ -276,6 +349,22 @@ body {
 .pulse-heart-10 { bottom: 12%; left: 48%; font-size: 1.75rem; animation-delay: 0.9s; }
 .pulse-heart-11 { bottom: 16%; right: 24%; font-size: 2.15rem; animation-delay: 1.6s; }
 .pulse-heart-12 { bottom: 10%; right: 8%; font-size: 1.95rem; animation-delay: 0.2s; }
+
+/* Pulse hearts más pequeños en móviles */
+@media (max-width: 640px) {
+    .pulse-heart-1 { font-size: 1.4rem; }
+    .pulse-heart-2 { font-size: 1.2rem; }
+    .pulse-heart-3 { font-size: 1.3rem; }
+    .pulse-heart-4 { font-size: 1.1rem; }
+    .pulse-heart-5 { font-size: 1.5rem; }
+    .pulse-heart-6 { font-size: 1.2rem; }
+    .pulse-heart-7 { font-size: 1.3rem; }
+    .pulse-heart-8 { font-size: 1.2rem; }
+    .pulse-heart-9 { font-size: 1.4rem; }
+    .pulse-heart-10 { font-size: 1.1rem; }
+    .pulse-heart-11 { font-size: 1.35rem; }
+    .pulse-heart-12 { font-size: 1.2rem; }
+}
 
 @keyframes heartbeatGlow {
     0%, 100% {
@@ -395,10 +484,24 @@ body {
     position: relative;
 }
 
+/* Mobile header adjustments */
+@media (max-width: 640px) {
+    .month-header {
+        margin-bottom: 10px;
+        padding-bottom: 40px;
+    }
+}
+
 .month-title {
     font-size: 1.85rem;
     color: var(--orange-1);
     margin-bottom: 10px;
+}
+
+@media (max-width: 640px) {
+    .month-title {
+        font-size: 1.5rem;
+    }
 }
 
 .love-quote {
@@ -407,6 +510,13 @@ body {
     font-style: italic;
     font-weight: 500;
     line-height: 1.35;
+}
+
+/* Mobile quote */
+@media (max-width: 640px) {
+    .love-quote {
+        font-size: 0.9rem;
+    }
 }
 
 .month-content {
@@ -418,6 +528,14 @@ body {
     overflow: hidden;
     min-height: 0;
     align-items: stretch;
+}
+
+/* Mobile: 1 columna en pantallas pequeñas */
+@media (max-width: 768px) {
+    .month-content {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
 }
 
 .month-content.single-column {
@@ -432,10 +550,25 @@ body {
     height: 100%;
 }
 
+/* Mobile content section */
+@media (max-width: 768px) {
+    .content-section {
+        height: auto;
+        min-height: auto;
+    }
+}
+
 .section-title {
     font-size: 1.15rem;
     color: var(--ink);
     font-weight: 600;
+}
+
+/* Mobile section title */
+@media (max-width: 640px) {
+    .section-title {
+        font-size: 1rem;
+    }
 }
 
 .image-gallery {
@@ -456,6 +589,13 @@ body {
     grid-template-rows: 1fr;
     aspect-ratio: 1;
     min-height: 320px;
+}
+
+/* Reducir altura en móviles */
+@media (max-width: 640px) {
+    .image-gallery.single-image {
+        min-height: 200px;
+    }
 }
 
 .image-placeholder {
@@ -501,6 +641,15 @@ body {
     font-weight: bold;
 }
 
+/* Text area responsive */
+@media (max-width: 640px) {
+    .text-area {
+        padding: 12px;
+        font-size: 0.95rem;
+        min-height: 150px;
+    }
+}
+
 .text-area:focus {
     outline: none;
     box-shadow: 0 0 10px rgba(255, 107, 53, 0.3);
@@ -524,6 +673,15 @@ body {
     align-items: center;
     justify-content: center;
     gap: 10px;
+}
+
+/* Mobile special button */
+@media (max-width: 640px) {
+    .special-button {
+        padding: 12px;
+        font-size: 0.95rem;
+        width: 100%;
+    }
 }
 
 .title-map-btn {
@@ -550,6 +708,15 @@ body {
     padding-top: 20px;
 }
 
+/* Mobile controls */
+@media (max-width: 640px) {
+    .controls {
+        flex-direction: column;
+        gap: 12px;
+        padding-top: 12px;
+    }
+}
+
 .nav-buttons,
 .action-buttons {
     display: flex;
@@ -562,6 +729,22 @@ body {
     align-items: center;
 }
 
+/* Mobile action buttons */
+@media (max-width: 640px) {
+    .nav-buttons {
+        width: 100%;
+        gap: 8px;
+        order: 2;
+    }
+    
+    .action-buttons {
+        width: 100%;
+        gap: 8px;
+        order: 1;
+        justify-content: center;
+    }
+}
+
 .nav-btn,
 .action-btn {
     padding: 10px 15px;
@@ -571,6 +754,18 @@ body {
     cursor: pointer;
     font-weight: 600;
     transition: all 0.3s ease;
+    font-size: 0.95rem;
+}
+
+/* Botones más grandes en móviles */
+@media (max-width: 640px) {
+    .nav-btn,
+    .action-btn {
+        padding: 12px 16px;
+        font-size: 0.9rem;
+        flex: 1;
+        min-width: 100px;
+    }
 }
 
 .nav-btn {
@@ -708,6 +903,15 @@ body {
     pointer-events: none;
 }
 
+/* Ajustar en móviles */
+@media (max-width: 640px) {
+    .continuara-corner {
+        right: 14px;
+        top: 12px;
+        font-size: 0.85rem;
+    }
+}
+
 .modal {
     display: none;
     position: fixed;
@@ -747,6 +951,22 @@ body {
     animation: slideUp 0.3s ease;
 }
 
+/* Modal responsive */
+@media (max-width: 768px) {
+    .modal-content {
+        padding: 20px;
+        width: 95%;
+    }
+}
+
+@media (max-width: 640px) {
+    .modal-content {
+        padding: 16px;
+        width: 98%;
+        max-height: 95vh;
+    }
+}
+
 @keyframes slideUp {
     from {
         opacity: 0;
@@ -767,6 +987,15 @@ body {
     line-height: 1;
 }
 
+/* Close button más grande en móviles */
+@media (max-width: 640px) {
+    .close-modal {
+        font-size: 1.8rem;
+        padding: 10px;
+        margin: -10px;
+    }
+}
+
 .close-modal:hover {
     color: #000;
 }
@@ -777,6 +1006,20 @@ body {
     border-radius: 10px;
     margin: 20px 0;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+/* Mapa responsive */
+@media (max-width: 768px) {
+    .map-container {
+        height: 300px;
+    }
+}
+
+@media (max-width: 640px) {
+    .map-container {
+        height: 250px;
+        margin: 15px 0;
+    }
 }
 
 #map {
@@ -805,12 +1048,28 @@ body {
     padding: 10px;
 }
 
+/* Mobile media content */
+@media (max-width: 640px) {
+    .media-content {
+        padding: 8px;
+        border-radius: 8px;
+    }
+}
+
 .media-row {
     display: grid;
     grid-template-columns: 1fr auto auto;
     gap: 8px;
     align-items: center;
     margin-bottom: 8px;
+}
+
+/* Mobile media row */
+@media (max-width: 640px) {
+    .media-row {
+        grid-template-columns: 1fr auto;
+        gap: 6px;
+    }
 }
 
 .media-input {
@@ -839,6 +1098,14 @@ body {
     font-size: 0.8rem;
 }
 
+/* Mini buttons más grandes en móviles */
+@media (max-width: 640px) {
+    .mini-btn {
+        padding: 10px 12px;
+        font-size: 0.85rem;
+    }
+}
+
 .mini-btn.danger {
     background: #dc4b5c;
 }
@@ -856,6 +1123,13 @@ body {
     height: 170px;
     border: 0;
     border-radius: 8px;
+}
+
+/* Mobile video */
+@media (max-width: 640px) {
+    .video-embed {
+        height: 200px;
+    }
 }
 
 .media-link {
@@ -909,6 +1183,15 @@ body {
     box-shadow: 0 6px 14px rgba(168, 61, 87, 0.18);
 }
 
+/* Mobile special note */
+@media (max-width: 640px) {
+    .special-place-note {
+        font-size: 1rem;
+        padding: 8px 12px;
+        max-width: 100%;
+    }
+}
+
 .note-heart {
     font-size: 1.28em;
     vertical-align: middle;
@@ -920,6 +1203,14 @@ body {
     grid-template-columns: 1fr 1fr;
     gap: 15px;
     margin: 20px 0;
+}
+
+/* Mobile map controls */
+@media (max-width: 768px) {
+    .map-controls {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
 }
 
 .input-group {
@@ -938,6 +1229,14 @@ body {
     border: 2px solid var(--orange-1);
     border-radius: 5px;
     font-size: 1rem;
+}
+
+/* Mobile inputs */
+@media (max-width: 640px) {
+    .input-group input {
+        padding: 12px;
+        font-size: 16px;
+    }
 }
 
 .input-group input:focus {
@@ -963,6 +1262,14 @@ body {
     transition: all 0.3s ease;
 }
 
+/* Mobile map buttons */
+@media (max-width: 640px) {
+    .map-btn {
+        padding: 14px 10px;
+        font-size: 0.95rem;
+    }
+}
+
 .map-btn:hover {
     background: #e85a2a;
     transform: translateY(-2px);
@@ -983,6 +1290,15 @@ body {
     display: flex;
     align-items: center;
     gap: 10px;
+}
+
+/* Mobile modal title */
+@media (max-width: 640px) {
+    .modal-title {
+        font-size: 1.4rem;
+        flex-wrap: wrap;
+        margin-bottom: 12px;
+    }
 }
 
 .special-coords {
