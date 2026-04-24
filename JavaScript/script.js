@@ -1044,6 +1044,37 @@ function startVideoResize(monthIndex, videoIndex, event) {
     window.addEventListener('pointerup', onUp, { once: true });
 }
 
+function promptVideoUrl(monthIndex, videoIndex, event) {
+    if (event) {
+        event.preventDefault?.();
+        event.stopPropagation?.();
+    }
+
+    const month = months[monthIndex];
+    if (!month) return;
+    if (!Array.isArray(month.videoUrls)) month.videoUrls = [];
+    if (!Array.isArray(month.videoHeights)) month.videoHeights = [];
+
+    const current = String(month.videoUrls[videoIndex] || '');
+    const next = window.prompt('Pega el enlace del vídeo:', current);
+    if (next === null) return;
+
+    const trimmed = String(next).trim();
+    month.videoUrls[videoIndex] = trimmed;
+
+    if (trimmed) {
+        month.showVideo = true;
+        month.videoHeights[videoIndex] = clampNumber(month.videoHeights[videoIndex] ?? 170, 120, 560);
+    } else {
+        month.videoUrls[videoIndex] = '';
+        month.videoHeights[videoIndex] = 170;
+        month.showVideo = month.videoUrls.some((v) => String(v || '').trim().length > 0);
+    }
+
+    persistMonths();
+    rerenderCurrentMonth();
+}
+
 async function removeSongEntry(monthIndex, songIndex, event) {
     if (event) {
         event.preventDefault?.();
@@ -1505,14 +1536,17 @@ function renderMonths() {
                                     const isFixedJulyTrack = isJuly2023 && si === 0;
                                     const title = (String(meta.title || '').trim()) || (isFixedJulyTrack ? JULY_2023_DEFAULT_TRACK.title : '');
                                     const artist = (String(meta.artist || '').trim()) || (isFixedJulyTrack ? JULY_2023_DEFAULT_TRACK.artist : '');
+                                    const coverSrc = (String(meta.cover || '').trim()) || '';
+                                    const coverZoom = Number.isFinite(meta.coverZoom) ? meta.coverZoom : 1;
 
                                     return `
                                 <div class="media-item spotify-wrapper">
                                     <div class="spotify-card" data-autoplay="${si === 0 ? 'true' : 'false'}">
                                         <button class="media-x-btn spotify-x" type="button" onclick="removeSongEntry(${index}, ${si}, event)" aria-label="Eliminar música"><i class="fas fa-trash"></i></button>
 
-                                        <div class="spotify-cover" onclick="triggerAudioUpload(${index}, ${si}, event)" title="Pulsa para elegir audio">
-                                            ${isFixedJulyTrack ? `<img class="zoomable-img" src="${JULY_2023_DEFAULT_TRACK.coverSrc}" alt="Portada de ${escapeAttribute(JULY_2023_DEFAULT_TRACK.title)}">` : `<div class="spotify-cover-placeholder" aria-hidden="true"><img class="spotify-note-img" src="assets/audio-upload.svg" alt=""></div>`}
+                                        <div class="spotify-cover" onclick="${isFixedJulyTrack ? `triggerAudioUpload(${index}, ${si}, event)` : `triggerSongCoverUpload(${index}, ${si}, event)`}" title="${isFixedJulyTrack ? 'Pulsa para elegir audio' : 'Pulsa para elegir imagen'}">
+                                            ${isFixedJulyTrack ? `<img class="zoomable-img" src="${JULY_2023_DEFAULT_TRACK.coverSrc}" style="transform: scale(${coverZoom});" alt="Portada de ${escapeAttribute(JULY_2023_DEFAULT_TRACK.title)}">` : (coverSrc ? `<img class="zoomable-img" src="${coverSrc}" style="transform: scale(${coverZoom});" alt="Portada">` : `<div class="spotify-cover-placeholder" aria-hidden="true"><img class="spotify-note-img" src="assets/image-upload-bw.svg" alt=""></div>`)}
+                                            ${(coverSrc || isFixedJulyTrack) ? `<div class="media-resize-handle" onpointerdown="startSongCoverResize(${index}, ${si}, event)" aria-hidden="true" title="Arrastra para cambiar tamaño"></div>` : ''}
                                         </div>
 
                                         <div class="spotify-meta">
@@ -1547,6 +1581,7 @@ function renderMonths() {
                                         ${isFixedJulyTrack ? '' : `<button class="spotify-add-song-btn" type="button" onclick="triggerAudioUpload(${index}, ${si}, event)">Añadir canción</button>`}
 
                                         <input type="file" class="audio-file-input spotify-audio-input" id="audioInput-${index}-${si}" data-song-index="${si}" accept="audio/*">
+                                        <input type="file" class="spotify-cover-input" id="coverInput-${index}-${si}" accept="image/*" onchange="handleCoverUpload(event, ${index}, ${si})">
 
                                         <audio class="audio-player hidden-audio" preload="metadata" data-audio-key="${getAudioKey(safeMonth.id ?? index, si)}"></audio>
                                     </div>
@@ -1578,7 +1613,7 @@ function renderMonths() {
                                         <input type="url" class="media-input video-input" id="videoUrl-${index}-${vi}" placeholder="Enlace de video" value="${escapeAttribute(v)}">
                                         <button class="media-x-btn" type="button" onclick="removeVideoEntry(${index}, ${vi}, event)" aria-label="Eliminar vídeo"><i class="fas fa-trash"></i></button>
                                     </div>
-                                    ${v ? `<div class="media-preview">${renderMediaPreview(v, 'video')}</div>` : ''}
+                                    ${v ? `<div class="media-preview">${renderMediaPreview(v, 'video')}</div>` : `<div class="video-empty-icon" onclick="document.getElementById('videoUrl-${index}-${vi}').focus()" aria-hidden="true"><i class="fas fa-video"></i><span>Añadir vídeo</span></div>`}
                                 </div>
                             `).join('')}
                         </div>
@@ -1611,6 +1646,11 @@ function renderMonths() {
         container.appendChild(monthPage);
         decoratePhotoPlaceholders(monthPage, index);
         decorateVideoPreviews(monthPage, index);
+        const musicList = monthPage.querySelector('.media-dotted-music');
+        const musicTitle = musicList?.previousElementSibling;
+        if (musicTitle && musicTitle.classList.contains('section-title')) {
+            musicTitle.textContent = '🎵 Música';
+        }
 
         // textareas: guardar cada una
         const textAreas = monthPage.querySelectorAll('.text-area');
