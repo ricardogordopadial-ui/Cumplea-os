@@ -3,6 +3,8 @@ let months = [];
 
 const BOOK_STORAGE_KEY = 'bookMonths';
 const COVER_STORAGE_KEY = 'bookCoverPhoto';
+const DEFAULT_COVER_PHOTO_URL = 'https://copilot.microsoft.com/th/id/BCO.726196b2-9ae5-41a1-a677-c75ba5095975.png';
+const LEGACY_DEFAULT_COVER_PHOTO_URL = 'assets/cover-square.png';
 const SPECIAL_PLACE_COORDS = [40.447022, -3.666234];
 const SPECIAL_PLACES = {
     january2023: {
@@ -1052,14 +1054,31 @@ function loadBook() {
         initializeMonths();
     }
 
-    // Actualizar Enero 2023 siempre con el nuevo texto romántico
+    // Enero 2023: poner valores por defecto solo si están vacíos (para no pisar lo que guardes)
     const enero2023Index = months.findIndex(m => m.month === 'Enero' && m.year === 2023);
     if (enero2023Index !== -1) {
         const romanticText = 'Amor mío, ese mes fue el que cambió mi vida para siempre 💘. El día 28 entré por la puerta de ese pub sin saber que mi destino estaba esperándome allí. Y entonces te vi, reina mía, y me quedé sin palabras, sin aire, sin poder pensar en nada más que en ti 😍. Recuerdo que al irme solo tenía una cosa en la mente: volverte loca, conquistarte y hacerte mi novia, bb, porque fue un flechazo a primera vista 💕. Mi corazón se entregó completamente en ese instante ❤️✨. Eres lo mejor que me ha pasado, amor 🥰.';
-        months[enero2023Index].text = romanticText;
-        months[enero2023Index].texts = [romanticText];
-        months[enero2023Index].images = ['https://copilot.microsoft.com/th/id/BCO.64f99663-9588-43ca-af5e-899e744303c0.png'];
-        persistMonths();
+        const january = normalizeMonthData(months[enero2023Index]);
+        let changed = false;
+
+        const hasAnyText = (Array.isArray(january.texts) && january.texts.some(t => String(t || '').trim().length > 0)) ||
+            (typeof january.text === 'string' && january.text.trim().length > 0);
+        if (!hasAnyText) {
+            january.text = romanticText;
+            january.texts = [romanticText];
+            changed = true;
+        }
+
+        const hasAnyImage = Array.isArray(january.images) && january.images.some(img => String(img || '').trim().length > 0);
+        if (!hasAnyImage) {
+            january.images = ['https://copilot.microsoft.com/th/id/BCO.64f99663-9588-43ca-af5e-899e744303c0.png'];
+            changed = true;
+        }
+
+        if (changed) {
+            months[enero2023Index] = january;
+            persistMonths();
+        }
     }
 
     months = months.map((monthData) => normalizeMonthData(monthData));
@@ -1333,7 +1352,14 @@ function applyCoverPhoto(photoData) {
 
 function loadCoverPhoto() {
     const savedPhoto = localStorage.getItem(COVER_STORAGE_KEY);
-    applyCoverPhoto(savedPhoto);
+    const shouldMigrateLegacy = savedPhoto === LEGACY_DEFAULT_COVER_PHOTO_URL;
+    const initialPhoto = (!savedPhoto || shouldMigrateLegacy) ? DEFAULT_COVER_PHOTO_URL : savedPhoto;
+
+    if (!savedPhoto || shouldMigrateLegacy) {
+        localStorage.setItem(COVER_STORAGE_KEY, DEFAULT_COVER_PHOTO_URL);
+    }
+
+    applyCoverPhoto(initialPhoto);
 
     const coverInput = document.getElementById('coverPhotoInput');
     coverInput.addEventListener('change', (event) => {
