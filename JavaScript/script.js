@@ -1045,11 +1045,8 @@ function startTypedBirthdayMessage() {
             if (!coverTypedRunning) return;
             index = 0;
             target.textContent = '';
-            coverTypedTimeoutId = setTimeout(() => {
-                if (!coverTypedRunning) return;
-                if (queen) queen.style.opacity = '0';
-                coverTypedTimeoutId = setTimeout(step, 500);
-            }, 1000);
+            if (queen) queen.style.opacity = '0';
+            coverTypedTimeoutId = setTimeout(step, 500);
         }, 2600);
     };
 
