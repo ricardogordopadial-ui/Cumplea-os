@@ -751,17 +751,19 @@ body {
     .action-buttons {
         width: 100%;
         gap: 6px;
+    }
+}
 
 .nav-btn,
 .action-btn {
-    padding: 10px 15px;
+    padding: 8px 10px;
     color: white;
     border: none;
     border-radius: 5px;
     cursor: pointer;
     font-weight: 600;
     transition: all 0.3s ease;
-    font-size: 0.95rem;
+    font-size: 0.8rem;
 }
 
 /* Botones más grandes en móviles */
@@ -903,7 +905,11 @@ body {
 .month-counter {
     text-align: center;
     color: #999;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .continuara-corner {
@@ -928,7 +934,7 @@ body {
 }
 
 .modal {
-    display: none;
+    display: none !important;
     position: fixed;
     z-index: 1000;
     left: 0;
@@ -940,7 +946,7 @@ body {
 }
 
 .modal.active {
-    display: flex;
+    display: flex !important;
     align-items: center;
     justify-content: center;
 }

@@ -87,7 +87,7 @@ function initializeMonths() {
 
         // Para Enero 2023: usar solo 1 foto y agregar el texto especial
         if (monthNames[currentDate.getMonth()] === 'Enero' && currentDate.getFullYear() === 2023) {
-            monthData.images = [''];
+            monthData.images = ['https://copilot.microsoft.com/th/id/BCO.64f99663-9588-43ca-af5e-899e744303c0.png'];
             monthData.text = 'Amor mío, ese mes fue el que cambió mi vida para siempre 💘. El día 28 entré por la puerta de ese pub sin saber que mi destino estaba esperándome allí. Y entonces te vi, reina mía, y me quedé sin palabras, sin aire, sin poder pensar en nada más que en ti 😍. Recuerdo que al irme solo tenía una cosa en la mente: volverte loca, conquistarte y hacerte mi novia, bb, porque fue un flechazo a primera vista 💕. Mi corazón se entregó completamente en ese instante ❤️✨. Eres lo mejor que me ha pasado, amor 🥰.';
         }
 
@@ -791,6 +791,7 @@ function loadBook() {
         const romanticText = 'Amor mío, ese mes fue el que cambió mi vida para siempre 💘. El día 28 entré por la puerta de ese pub sin saber que mi destino estaba esperándome allí. Y entonces te vi, reina mía, y me quedé sin palabras, sin aire, sin poder pensar en nada más que en ti 😍. Recuerdo que al irme solo tenía una cosa en la mente: volverte loca, conquistarte y hacerte mi novia, bb, porque fue un flechazo a primera vista 💕. Mi corazón se entregó completamente en ese instante ❤️✨. Eres lo mejor que me ha pasado, amor 🥰.';
         months[enero2023Index].text = romanticText;
         months[enero2023Index].texts = [romanticText];
+        months[enero2023Index].images = ['https://copilot.microsoft.com/th/id/BCO.64f99663-9588-43ca-af5e-899e744303c0.png'];
         persistMonths();
     }
 
