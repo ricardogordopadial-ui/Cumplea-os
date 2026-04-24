@@ -732,13 +732,38 @@ function escapeAttribute(value) {
 function getYouTubeEmbedUrl(url) {
     if (!url) return '';
     const trimmed = url.trim();
-    const shortMatch = trimmed.match(/youtu\.be\/([^?&/]+)/i);
-    if (shortMatch) return `https://www.youtube.com/embed/${shortMatch[1]}`;
-    const fullMatch = trimmed.match(/[?&]v=([^&]+)/i);
-    if (fullMatch) return `https://www.youtube.com/embed/${fullMatch[1]}`;
-    const embedMatch = trimmed.match(/youtube\.com\/embed\/([^?&/]+)/i);
-    if (embedMatch) return `https://www.youtube.com/embed/${embedMatch[1]}`;
-    return '';
+    
+    // Intenta extraer el ID de video de diferentes formatos de YouTube
+    let videoId = '';
+    
+    // Formato: youtu.be/VIDEO_ID
+    const shortMatch = trimmed.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/i);
+    if (shortMatch) videoId = shortMatch[1];
+    
+    // Formato: youtube.com/watch?v=VIDEO_ID (o youtube.com/watch?v=VIDEO_ID&...)
+    if (!videoId) {
+        const fullMatch = trimmed.match(/youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/i);
+        if (fullMatch) videoId = fullMatch[1];
+    }
+    
+    // Formato: youtube.com/embed/VIDEO_ID
+    if (!videoId) {
+        const embedMatch = trimmed.match(/youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/i);
+        if (embedMatch) videoId = embedMatch[1];
+    }
+    
+    // Formato: m.youtube.com/watch?v=VIDEO_ID
+    if (!videoId) {
+        const mobileMatch = trimmed.match(/m\.youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/i);
+        if (mobileMatch) videoId = mobileMatch[1];
+    }
+    
+    // Si es solo el ID de video (11 caracteres)
+    if (!videoId && trimmed.match(/^[a-zA-Z0-9_-]{11}$/)) {
+        videoId = trimmed;
+    }
+    
+    return videoId ? `https://www.youtube.com/embed/${videoId}` : '';
 }
 
 function getVideoEmbedHeight(month, videoIndex) {
@@ -766,11 +791,7 @@ function renderVideoPreview(url, month, monthIndex, videoIndex) {
 function renderMediaPreview(url, type) {
     if (!url) return '';
     if (type === 'video') {
-        const ytEmbed = getYouTubeEmbedUrl(url);
-        if (ytEmbed) {
-            return `<iframe class="media-embed video-embed" src="${ytEmbed}" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
-        }
-        return `<a class="media-link" href="${escapeAttribute(url)}" target="_blank" rel="noopener noreferrer">Abrir video</a>`;
+        return `<a class="media-link" href="${escapeAttribute(url)}" target="_blank" rel="noopener noreferrer">Ver video</a>`;
     }
     return `<a class="media-link" href="${escapeAttribute(url)}" target="_blank" rel="noopener noreferrer">Abrir música</a>`;
 }
@@ -907,6 +928,9 @@ function removePhoto(monthIndex, imageIndex, event) {
         event.preventDefault?.();
         event.stopPropagation?.();
     }
+    const confirmed = confirm('¿Seguro que quieres eliminarlo?');
+    if (!confirmed) return;
+
     const month = months[monthIndex];
     if (!month) return;
     if (!Array.isArray(month.images)) return;
@@ -926,6 +950,9 @@ function removePhotoSlot(monthIndex, imageIndex, event) {
         event.preventDefault?.();
         event.stopPropagation?.();
     }
+    const confirmed = confirm('¿Seguro que quieres eliminarlo?');
+    if (!confirmed) return;
+
     const month = months[monthIndex];
     if (!month) return;
     if (!Array.isArray(month.images)) return;
@@ -987,6 +1014,9 @@ function removeVideoEntry(monthIndex, videoIndex, event) {
         event.preventDefault?.();
         event.stopPropagation?.();
     }
+    const confirmed = confirm('¿Seguro que quieres eliminarlo?');
+    if (!confirmed) return;
+
     const month = months[monthIndex];
     if (!month) return;
     if (!Array.isArray(month.videoUrls)) return;
@@ -998,6 +1028,37 @@ function removeVideoEntry(monthIndex, videoIndex, event) {
     }
     if (month.videoUrls.length === 0) {
         month.showVideo = false;
+    }
+
+    persistMonths();
+    rerenderCurrentMonth();
+}
+
+function promptAddVideoUrl(monthIndex, videoIndex, event) {
+    if (event) {
+        event.preventDefault?.();
+        event.stopPropagation?.();
+    }
+
+    const month = months[monthIndex];
+    if (!month) return;
+    if (!Array.isArray(month.videoUrls)) month.videoUrls = [];
+    if (!Array.isArray(month.videoHeights)) month.videoHeights = [];
+
+    const current = String(month.videoUrls[videoIndex] || '');
+    const next = window.prompt('Pega el enlace del vídeo:', current);
+    if (next === null) return;
+
+    const trimmed = String(next).trim();
+    month.videoUrls[videoIndex] = trimmed;
+
+    if (trimmed) {
+        month.showVideo = true;
+        month.videoHeights[videoIndex] = clampNumber(month.videoHeights[videoIndex] ?? 170, 120, 560);
+    } else {
+        month.videoUrls[videoIndex] = '';
+        month.videoHeights[videoIndex] = 170;
+        month.showVideo = month.videoUrls.some((v) => String(v || '').trim().length > 0);
     }
 
     persistMonths();
@@ -1080,6 +1141,9 @@ async function removeSongEntry(monthIndex, songIndex, event) {
         event.preventDefault?.();
         event.stopPropagation?.();
     }
+    const confirmed = confirm('¿Seguro que quieres eliminarlo?');
+    if (!confirmed) return;
+
     const month = months[monthIndex];
     if (!month) return;
     if (!Array.isArray(month.songUrls)) return;
@@ -1609,11 +1673,14 @@ function renderMonths() {
                         <div class="media-dotted media-dotted-video">
                             ${(Array.isArray(safeMonth.videoUrls) ? safeMonth.videoUrls : []).map((v, vi) => `
                                 <div class="media-item">
-                                    <div class="media-row">
-                                        <input type="url" class="media-input video-input" id="videoUrl-${index}-${vi}" placeholder="Enlace de video" value="${escapeAttribute(v)}">
-                                        <button class="media-x-btn" type="button" onclick="removeVideoEntry(${index}, ${vi}, event)" aria-label="Eliminar vídeo"><i class="fas fa-trash"></i></button>
+                                    <div class="video-card">
+                                        <div class="video-icon-wrapper" onclick="promptAddVideoUrl(${index}, ${vi}, event)" aria-hidden="true" title="Haz clic para añadir/cambiar vídeo">
+                                            <i class="fas fa-video"></i>
+                                            <span>Añadir vídeo</span>
+                                        </div>
+                                        <button class="media-x-btn" type="button" onclick="removeVideoEntry(${index}, ${vi}, event)" aria-label="Eliminar vídeo" title="Haz clic para eliminar"><i class="fas fa-trash"></i></button>
                                     </div>
-                                    ${v ? `<div class="media-preview">${renderMediaPreview(v, 'video')}</div>` : `<div class="video-empty-icon" onclick="document.getElementById('videoUrl-${index}-${vi}').focus()" aria-hidden="true"><i class="fas fa-video"></i><span>Añadir vídeo</span></div>`}
+                                    ${v ? `<div class="media-preview">${renderMediaPreview(v, 'video')}</div>` : ''}
                                 </div>
                             `).join('')}
                         </div>
