@@ -1933,6 +1933,15 @@ function showMonth(index, direction = 'forward') {
 
 function previousMonth() {
     if (currentMonth > 0) {
+        // Pausar todos los audios antes de cambiar de mes
+        document.querySelectorAll('audio').forEach((audio) => {
+            try {
+                audio.pause();
+                audio.currentTime = 0;
+            } catch {
+                // ignore
+            }
+        });
         currentMonth -= 1;
         showMonth(currentMonth, 'backward');
         return;
@@ -1942,6 +1951,15 @@ function previousMonth() {
 
 function nextMonth() {
     if (currentMonth < months.length - 1) {
+        // Pausar todos los audios antes de cambiar de mes
+        document.querySelectorAll('audio').forEach((audio) => {
+            try {
+                audio.pause();
+                audio.currentTime = 0;
+            } catch {
+                // ignore
+            }
+        });
         currentMonth += 1;
         showMonth(currentMonth, 'forward');
     }
@@ -2045,6 +2063,16 @@ function openIndex() {
     const indexPage = document.getElementById('indexPage');
     if (!indexPage) return;
 
+    // Pausar todos los audios cuando se abre el índice
+    document.querySelectorAll('audio').forEach((audio) => {
+        try {
+            audio.pause();
+            audio.currentTime = 0;
+        } catch {
+            // ignore
+        }
+    });
+
     renderIndex();
     indexPage.classList.add('active');
 
@@ -2077,6 +2105,16 @@ function goToMonthFromIndex(index) {
     if (!Number.isFinite(targetIndex)) return;
     if (targetIndex < 0 || targetIndex >= months.length) return;
 
+    // Pausar todos los audios antes de cambiar de mes
+    document.querySelectorAll('audio').forEach((audio) => {
+        try {
+            audio.pause();
+            audio.currentTime = 0;
+        } catch {
+            // ignore
+        }
+    });
+
     const indexPage = document.getElementById('indexPage');
     if (indexPage) indexPage.classList.remove('active');
 
@@ -2094,6 +2132,16 @@ function startBook() {
 }
 
 function goToCover() {
+    // Pausar todos los audios cuando se vuelve a la portada
+    document.querySelectorAll('audio').forEach((audio) => {
+        try {
+            audio.pause();
+            audio.currentTime = 0;
+        } catch {
+            // ignore
+        }
+    });
+    
     document.getElementById('bookContainer').classList.remove('active');
     document.getElementById('coverPage').style.display = 'flex';
     const indexPage = document.getElementById('indexPage');
