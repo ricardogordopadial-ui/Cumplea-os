@@ -10,6 +10,40 @@ from = "/*"
 to = "/index.html"
 status = 200
 
+# Headers para archivos estáticos - cachear agresivamente
+[[headers]]
+for = "/CSS/*"
+[headers.values]
+Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+for = "/JavaScript/*"
+[headers.values]
+Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+for = "/musica/*"
+[headers.values]
+Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+for = "/assets/*"
+[headers.values]
+Cache-Control = "public, max-age=31536000, immutable"
+
+# Headers para Service Worker - no cachear
+[[headers]]
+for = "/service-worker.js"
+[headers.values]
+Cache-Control = "no-cache, no-store, must-revalidate"
+
+# Headers para HTML principal - no cachear para que siempre tenga la última versión
+[[headers]]
+for = "/*.html"
+[headers.values]
+Cache-Control = "no-cache, no-store, must-revalidate"
+
+# Headers generales por defecto
 [[headers]]
 for = "/*"
 [headers.values]

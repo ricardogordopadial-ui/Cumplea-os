@@ -741,6 +741,15 @@ function persistMonths() {
     localStorage.setItem(BOOK_STORAGE_KEY, JSON.stringify(months));
     // También guardar en IndexedDB para que funcione en cualquier contexto (localhost, file://, etc)
     saveBooksDb(months).catch(err => console.error('Error persisting to IndexedDB:', err));
+    
+    // Sincronizar con Service Worker para persistencia máxima
+    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        const channel = new MessageChannel();
+        navigator.serviceWorker.controller.postMessage(
+            { type: 'CACHE_DATA', data: months },
+            [channel.port2]
+        );
+    }
 }
 
 function saveMonthData(index) {
@@ -2252,6 +2261,29 @@ async function loadBook() {
     console.log('[loadBook] Datos de IndexedDB:', saved ? `${saved.length} meses` : 'null');
     
     let migratedFromLocalStorage = false;
+    
+    // Si no hay en IndexedDB, intentar desde Service Worker
+    if (!saved && 'serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        console.log('[loadBook] Intentando cargar del Service Worker...');
+        try {
+            const channel = new MessageChannel();
+            const swData = await new Promise((resolve) => {
+                channel.port1.onmessage = (event) => {
+                    console.log('[loadBook] Respuesta del SW:', event.data);
+                    resolve(event.data.data);
+                };
+                navigator.serviceWorker.controller.postMessage(
+                    { type: 'GET_CACHED_DATA' },
+                    [channel.port2]
+                );
+                // Timeout de 2 segundos
+                setTimeout(() => resolve(null), 2000);
+            });
+            if (swData) saved = swData;
+        } catch (err) {
+            console.warn('[loadBook] Error obteniendo datos del SW:', err);
+        }
+    }
     
     if (!saved) {
         // Si no está en IndexedDB, intentar cargar de localStorage (legacy)
