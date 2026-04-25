@@ -707,11 +707,27 @@ function initializeMonths() {
             monthData.songUrls = ['musica/Me Voy Enamorando.mp3'];
             monthData.songMeta = [{
                 title: 'Me voy enamorando',
-                artist: 'Chino & Nacho',
+                artist: 'Chino & Nacho, Daddy Yankee',
                 cover: 'assets/enamorando.jpg',
                 coverZoom: 1
             }];
             monthData.text = 'Ese febrero, reina mía, no paraba de pensar en ti 💭💕. Todos los días, cada momento, mi mente estaba en ti, amor 😍. Incluso hablé con Marco y Nico sobre un plan para conquistarte, jajaja, qué loco ¿no? 😜💘. Yo respetaba que tuvieras novio, reina, porque no soy como esos otros chicos que no tienen valores y son cortos de mente, que aunque tengan su pareja no la respetan ni la cuidan. Yo no soy así, bb. Pero entonces tú le pusiste los cuernos a tu novio 💔, y me puse triste cuando los besaste, porque aún sabiendo todo eso, tú seguías en mi mente, en cada rincón de mi corazón 💭💕. Y a partir de ese día, empezó a sonar una canción que no podía sacarme de la cabeza 🎶, una que resume exactamente lo que estaba sintiendo en ese momento 😔.';
+        }
+
+        // Para Marzo 2023: música con el texto (sin fotos)
+        if (monthNames[currentDate.getMonth()] === 'Marzo' && currentDate.getFullYear() === 2023) {
+            monthData.images = [];
+            monthData.showPhotos = false;
+            monthData.showMusic = true;
+            monthData.songUrl = '';
+            monthData.songUrls = [''];
+            monthData.songMeta = [{
+                title: 'Andas En Mi Cabeza',
+                artist: 'Chino & Nacho, Daddy Yankee',
+                cover: 'assets/ab67616d00001e026df5cc472d61a635abab06cf.jpg',
+                coverZoom: 1
+            }];
+            monthData.text = 'En marzo, reina mía, aún no nos habíamos visto en persona 💔, pero esos mensajes entre nosotros eran todo lo que tenía 📱💕. A veces tardabas en responder y tú sabes cómo soy, un rayado total, jajaja 😅💭. Ese mes fue el cumpleaños de Rocío 🎂, así que fuimos a su fiesta. Cuando empezaste a liarle con Edi, me puse triste, la verdad, amor 😔💔. Pero yo no me rendía, ¿sabés? Le pedí ayuda a Serrano para poder estar contigo 💪. Cuando fui al baño tú entraste detrás y... nos besamos 😍💋. Al salir vimos a Edi con una cara de sorpresa jajaja 😂. Después la fiesta se descontroló, la gente empezó a llorar, y yo fui a consolarte porque siempre he estado ahí para ti, reina 🥰💕. Nos fuimos juntos y desde ese momento otra canción comenzó a sonar en mi cabeza 🎶✨. A partir de eso empezamos a hablarnos más seguido, cada vez más, y sentía que algo especial estaba creciendo entre nosotros 💘.';
         }
 
         months.push(monthData);
@@ -1607,6 +1623,7 @@ function renderMonths() {
         // Verificar si es enero 2023 para layout especial
         const isJanuary2023 = safeMonth.month === 'Enero' && safeMonth.year === 2023;
         const isFebruary2023 = safeMonth.month === 'Febrero' && safeMonth.year === 2023;
+        const isMarch2023 = safeMonth.month === 'Marzo' && safeMonth.year === 2023;
         const isJuly2023 = safeMonth.month === 'Julio' && safeMonth.year === 2023;
 
         const monthPage = document.createElement('div');
@@ -1618,8 +1635,15 @@ function renderMonths() {
         const galleryClass = isJanuary2023 ? 'single-image' : '';
 
         // Para febrero 2023: ocultar fotos, mostrar música y texto
+        // Para marzo 2023: ocultar fotos, mostrar música y texto
         const showPhotosFebruary = isFebruary2023 ? false : safeMonth.showPhotos;
         const showMusicFebruary = isFebruary2023 ? safeMonth.showMusic : safeMonth.showMusic;
+        const showPhotosMarch = isMarch2023 ? false : safeMonth.showPhotos;
+        const showMusicMarch = isMarch2023 ? safeMonth.showMusic : safeMonth.showMusic;
+        
+        // Usar las variables específicas del mes si aplica
+        const showPhotos = isMarch2023 ? showPhotosMarch : showPhotosFebruary;
+        const showMusic = isMarch2023 ? showMusicMarch : showMusicFebruary;
 
         monthPage.innerHTML = `
             <div class="heart-pulse-bg" aria-hidden="true">
@@ -1645,9 +1669,9 @@ function renderMonths() {
             </div>
 
             <div class="month-content ${gridClass}">
-                ${(showPhotosFebruary || showMusicFebruary) ? `
-                <div class="content-section photos-section ${showMusicFebruary ? 'has-music' : ''}">
-                    ${showPhotosFebruary ? `
+                ${(showPhotos || showMusic) ? `
+                <div class="content-section photos-section ${showMusic ? 'has-music' : ''}">
+                    ${showPhotos ? `
                         <h3 class="section-title">📷 Nuestros momentos</h3>
                         <div class="image-gallery ${galleryClass}">
                             ${Array.isArray(safeMonth.images) ? safeMonth.images.map((img, i) => {
@@ -1670,7 +1694,7 @@ function renderMonths() {
                         <input type="file" class="image-input" id="imageInput-${index}" accept="image/*">
                     ` : ''}
 
-                    ${showMusicFebruary ? `
+                    ${showMusic ? `
                         <h3 class="section-title">🎵 Música 🖼️</h3>
                         <div class="media-dotted media-dotted-music">
                             ${(Array.isArray(safeMonth.songUrls) ? safeMonth.songUrls : []).map((_, si) => `
@@ -1743,8 +1767,8 @@ function renderMonths() {
                         ${Array.isArray(safeMonth.texts) ? safeMonth.texts.map((t, ti) => {
                             const defaultText = isJanuary2023 ? 'Amor mío, ese mes fue el que cambió mi vida para siempre 💘. El día 28 entré por la puerta de ese pub sin saber que mi destino estaba esperándome allí. Y entonces te vi, reina mía, y me quedé sin palabras, sin aire, sin poder pensar en nada más que en ti 😍. Recuerdo que al irme solo tenía una cosa en la mente: volverte loca, conquistarte y hacerte mi novia, bb, porque fue un flechazo a primera vista 💕. Mi corazón se entregó completamente en ese instante ❤️✨. Eres lo mejor que me ha pasado, amor 🥰.' : '';
                             const textContent = t || defaultText;
-                            return `<textarea class="text-area" id="text-${index}-${ti}" placeholder="Cuéntame qué pasó este mes...">${textContent}</textarea>`;
-                        }).join('') : `<textarea class="text-area" id="text-${index}-0" placeholder="Cuéntame qué pasó este mes...">${safeMonth.text || (isJanuary2023 ? 'Amor mío, ese mes fue el que cambió mi vida para siempre 💘. El día 28 entré por la puerta de ese pub sin saber que mi destino estaba esperándome allí. Y entonces te vi, reina mía, y me quedé sin palabras, sin aire, sin poder pensar en nada más que en ti 😍. Recuerdo que al irme solo tenía una cosa en la mente: volverte loca, conquistarte y hacerte mi novia, bb, porque fue un flechazo a primera vista 💕. Mi corazón se entregó completamente en ese instante ❤️✨. Eres lo mejor que me ha pasado, amor 🥰.' : '')}</textarea>`}
+                            return `<textarea class="text-area" id="text-${index}-${ti}" placeholder="Cuéntame qué pasó este mes..." spellcheck="false">${textContent}</textarea>`;
+                        }).join('') : `<textarea class="text-area" id="text-${index}-0" placeholder="Cuéntame qué pasó este mes..." spellcheck="false">${safeMonth.text || (isJanuary2023 ? 'Amor mío, ese mes fue el que cambió mi vida para siempre 💘. El día 28 entré por la puerta de ese pub sin saber que mi destino estaba esperándome allí. Y entonces te vi, reina mía, y me quedé sin palabras, sin aire, sin poder pensar en nada más que en ti 😍. Recuerdo que al irme solo tenía una cosa en la mente: volverte loca, conquistarte y hacerte mi novia, bb, porque fue un flechazo a primera vista 💕. Mi corazón se entregó completamente en ese instante ❤️✨. Eres lo mejor que me ha pasado, amor 🥰.' : '')}</textarea>`}
                     ` : ''}
 
                     ${safeMonth.showVideo ? `
@@ -2349,7 +2373,7 @@ async function loadBook() {
             febrero.songUrls = ['musica/Me Voy Enamorando.mp3'];
             febrero.songMeta = [{
                 title: 'Me voy enamorando',
-                artist: 'Chino & Nacho',
+                artist: 'Chino & Nacho, Daddy Yankee',
                 cover: 'assets/enamorando.jpg',
                 coverZoom: 1
             }];
@@ -2368,6 +2392,49 @@ async function loadBook() {
 
         if (changed) {
             months[febrero2023Index] = febrero;
+            persistMonths();
+        }
+    }
+
+    // Marzo 2023: solo texto sin fotos ni música
+    const marzo2023Index = months.findIndex(m => m.month === 'Marzo' && m.year === 2023);
+    if (marzo2023Index !== -1) {
+        const marzo = normalizeMonthData(months[marzo2023Index]);
+        let changed = false;
+
+        // Siempre sin fotos
+        if (marzo.showPhotos !== false || (Array.isArray(marzo.images) && marzo.images.length > 0)) {
+            marzo.showPhotos = false;
+            marzo.images = [];
+            changed = true;
+        }
+
+        // Siempre CON música
+         
+        if (marzo.showMusic !== true || !Array.isArray(marzo.songUrls) || marzo.songUrls.length === 0) {
+            marzo.showMusic = true;
+            marzo.songUrls = ['musica/Me Voy Enamorando.mp3'];
+            marzo.songMeta = [{
+                title: 'Me voy enamorando',
+                artist: 'Chino & Nacho, Daddy Yankee',
+                cover: 'assets/enamorando.jpg',
+                coverZoom: 1
+            }];
+            changed = true;
+        }
+
+        // Texto especial si está vacío
+        const hasAnyText = (Array.isArray(marzo.texts) && marzo.texts.some(t => String(t || '').trim().length > 0)) ||
+            (typeof marzo.text === 'string' && marzo.text.trim().length > 0);
+        if (!hasAnyText) {
+            const marzoText = 'En marzo, reina mía, aún no nos habíamos visto en persona 💔, pero esos mensajes entre nosotros eran todo lo que tenía 📱💕. A veces tardabas en responder y tú sabes cómo soy, un rayado total, jajaja 😅💭. Ese mes fue el cumpleaños de Rocío 🎂, así que fuimos a su fiesta. Cuando empezaste a liarle con Edi, me puse triste, la verdad, amor 😔💔. Pero yo no me rendía, ¿sabés? Le pedí ayuda a Serrano para poder estar contigo 💪. Cuando fui al baño tú entraste detrás y... nos besamos 😍💋. Al salir vimos a Edi con una cara de sorpresa jajaja 😂. Después la fiesta se descontroló, la gente empezó a llorar, y yo fui a consolarte porque siempre he estado ahí para ti, reina 🥰💕. Nos fuimos juntos y desde ese momento otra canción comenzó a sonar en mi cabeza 🎶✨. A partir de eso empezamos a hablarnos más seguido, cada vez más, y sentía que algo especial estaba creciendo entre nosotros 💘.';
+            marzo.text = marzoText;
+            marzo.texts = [marzoText];
+            changed = true;
+        }
+
+        if (changed) {
+            months[marzo2023Index] = marzo;
             persistMonths();
         }
     }

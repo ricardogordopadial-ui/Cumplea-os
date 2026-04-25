@@ -1,0 +1,16 @@
+[build]
+publish = "."
+command = ""
+
+[context.production]
+environment = { NODE_ENV = "production" }
+
+[[redirects]]
+from = "/*"
+to = "/index.html"
+status = 200
+
+[[headers]]
+for = "/*"
+[headers.values]
+Cache-Control = "no-cache, no-store, must-revalidate"
