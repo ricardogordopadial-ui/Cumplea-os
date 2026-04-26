@@ -85,16 +85,11 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // Para HTML: Network First, fallback a Cache
+    // Para HTML: Network First (no cachear index.html para evitar problemas)
     if (request.method === 'GET' && (request.url.endsWith('.html') || request.url.endsWith('/'))) {
         event.respondWith(
             fetch(request).then((response) => {
-                if (response && response.status === 200) {
-                    const cloned = response.clone();
-                    caches.open(CACHE_NAME).then((cache) => {
-                        cache.put(request, cloned);
-                    });
-                }
+                // No cachear HTML para forzar actualizaciones
                 return response;
             }).catch(() => {
                 return caches.match(request).then((cached) => {

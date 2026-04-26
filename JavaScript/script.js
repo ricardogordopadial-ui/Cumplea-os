@@ -1,5 +1,7 @@
 let currentMonth = 0;
 let months = [];
+let openedFromIndex = false;
+let coverResizeActive = false;
 
 const BOOK_STORAGE_KEY = 'bookMonths';
 const COVER_STORAGE_KEY = 'bookCoverPhoto';
@@ -17,6 +19,12 @@ const JULY_2023_DEFAULT_TRACK = {
     artist: 'Quevedo',
     coverSrc: 'assets/july-2023-album.jpg',
     audioSrc: 'musica/Columbia - Quevedo (Video Oficial).mp3'
+};
+
+const MARCH_2023_DEFAULT_TRACK = {
+    title: 'Andas En Mi Cabeza',
+    artist: 'Chino y Nacho ft. Daddy Yankee',
+    audioSrc: 'musica/Chino y Nacho - Andas En Mi Cabeza ft. Daddy Yankee (Video Oficial).mp3'
 };
 
 function clampNumber(value, min, max) {
@@ -46,6 +54,11 @@ function adjustCoverPhotoZoom(delta, event) {
     const current = getCoverPhotoZoom();
     const next = clampNumber(current + delta, 0.6, 2.2);
     localStorage.setItem(COVER_ZOOM_KEY, String(next));
+    // Guardar en IndexedDB también
+    const photoData = localStorage.getItem(COVER_STORAGE_KEY);
+    if (photoData) {
+        saveCoverToDb(photoData, String(next)).catch(err => console.error('Error saving zoom:', err));
+    }
     applyCoverPhotoZoom();
 }
 
@@ -57,6 +70,7 @@ function startCoverResize(event) {
     const img = document.getElementById('coverPhoto');
     if (!img) return;
 
+    coverResizeActive = true;
     const startX = event.clientX;
     const startY = event.clientY;
     const startZoom = getCoverPhotoZoom();
@@ -79,6 +93,13 @@ function startCoverResize(event) {
     const onUp = () => {
         window.removeEventListener('pointermove', onMove);
         window.removeEventListener('pointerup', onUp);
+        coverResizeActive = false;
+        // Guardar en IndexedDB al finalizar
+        const photoData = localStorage.getItem(COVER_STORAGE_KEY);
+        const zoomLevel = localStorage.getItem(COVER_ZOOM_KEY);
+        if (photoData && zoomLevel) {
+            saveCoverToDb(photoData, zoomLevel).catch(err => console.error('Error saving cover resize:', err));
+        }
     };
 
     window.addEventListener('pointermove', onMove, { passive: true });
@@ -138,6 +159,37 @@ async function loadBooksDb() {
         });
     } catch (err) {
         console.error('Error loading from IndexedDB:', err);
+        return null;
+    }
+}
+
+async function saveCoverToDb(photoData, zoomLevel) {
+    try {
+        const db = await openBooksDb();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(BOOKS_DB_STORE, 'readwrite');
+            const store = tx.objectStore(BOOKS_DB_STORE);
+            store.put({ photoData, zoomLevel }, 'cover');
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+        });
+    } catch (err) {
+        console.error('Error saving cover to IndexedDB:', err);
+    }
+}
+
+async function loadCoverFromDb() {
+    try {
+        const db = await openBooksDb();
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(BOOKS_DB_STORE, 'readonly');
+            const store = tx.objectStore(BOOKS_DB_STORE);
+            const req = store.get('cover');
+            req.onsuccess = () => resolve(req.result || null);
+            req.onerror = () => reject(tx.error);
+        });
+    } catch (err) {
+        console.error('Error loading cover from IndexedDB:', err);
         return null;
     }
 }
@@ -244,6 +296,9 @@ function getFallbackAudioSrc(month, songIndex) {
     if (month.month === 'Febrero' && month.year === 2023 && songIndex === 0) {
         return encodeURI('musica/Me Voy Enamorando.mp3');
     }
+    if (month.month === 'Marzo' && month.year === 2023 && songIndex === 0) {
+        return encodeURI(MARCH_2023_DEFAULT_TRACK.audioSrc);
+    }
     return '';
 }
 
@@ -333,16 +388,31 @@ function initSpotifyPlayers(monthPage) {
 
 function autoplaySpotifyPlayersOnPage(monthPage) {
     const cards = Array.from(monthPage.querySelectorAll('.spotify-card'));
+    
+    // Reproducir el primer audio disponible
     for (const card of cards) {
         const audio = card.querySelector('audio');
         if (!audio || !audio.src) continue;
-        if (!audio.paused) return;
 
         const tryAutoplay = async () => {
             try {
-                await audio.play();
-            } catch {
-                // Autoplay puede estar bloqueado por el navegador
+                // Detener otros audios primero
+                document.querySelectorAll('audio').forEach((a) => {
+                    if (a !== audio && !a.paused) {
+                        a.pause();
+                        a.currentTime = 0;
+                    }
+                });
+                
+                // Reproducir este audio
+                const playPromise = audio.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(err => {
+                        console.warn('Autoplay bloqueado:', err);
+                    });
+                }
+            } catch (err) {
+                console.warn('Error en autoplay:', err);
             }
         };
 
@@ -351,8 +421,18 @@ function autoplaySpotifyPlayersOnPage(monthPage) {
         } else {
             audio.addEventListener('loadedmetadata', tryAutoplay, { once: true });
         }
-        return;
+        return; // Solo reproducir el primer audio
     }
+}
+
+function stopAllAudio() {
+    // Detener todas las canciones cuando se cambia de mes
+    document.querySelectorAll('audio').forEach((audio) => {
+        if (!audio.paused) {
+            audio.pause();
+            audio.currentTime = 0;
+        }
+    });
 }
 
 async function handleAudioUpload(event, monthIndex, songIndex) {
@@ -442,9 +522,6 @@ async function hydrateMonthAudioPlayers(monthPage, monthIndex) {
     });
 
     initSpotifyPlayers(monthPage);
-    if (monthPage.classList.contains('active')) {
-        autoplaySpotifyPlayersOnPage(monthPage);
-    }
 }
 const SPECIAL_PLACE_COORDS = [40.447022, -3.666234];
 const SPECIAL_PLACES = {
@@ -695,6 +772,7 @@ function initializeMonths() {
         // Para Enero 2023: usar solo 1 foto y agregar el texto especial
         if (monthNames[currentDate.getMonth()] === 'Enero' && currentDate.getFullYear() === 2023) {
             monthData.images = ['https://copilot.microsoft.com/th/id/BCO.64f99663-9588-43ca-af5e-899e744303c0.png'];
+            monthData.imageZooms = [1];
             monthData.text = 'Amor mío, ese mes fue el que cambió mi vida para siempre 💘. El día 28 entré por la puerta de ese pub sin saber que mi destino estaba esperándome allí. Y entonces te vi, reina mía, y me quedé sin palabras, sin aire, sin poder pensar en nada más que en ti 😍. Recuerdo que al irme solo tenía una cosa en la mente: volverte loca, conquistarte y hacerte mi novia, bb, porque fue un flechazo a primera vista 💕. Mi corazón se entregó completamente en ese instante ❤️✨. Eres lo mejor que me ha pasado, amor 🥰.';
         }
 
@@ -719,8 +797,8 @@ function initializeMonths() {
             monthData.images = [];
             monthData.showPhotos = false;
             monthData.showMusic = true;
-            monthData.songUrl = '';
-            monthData.songUrls = [''];
+            monthData.songUrl = 'musica/Chino y Nacho - Andas En Mi Cabeza ft. Daddy Yankee (Video Oficial).mp3';
+            monthData.songUrls = ['musica/Chino y Nacho - Andas En Mi Cabeza ft. Daddy Yankee (Video Oficial).mp3'];
             monthData.songMeta = [{
                 title: 'Andas En Mi Cabeza',
                 artist: 'Chino & Nacho, Daddy Yankee',
@@ -738,18 +816,16 @@ function initializeMonths() {
 }
 
 function persistMonths() {
-    localStorage.setItem(BOOK_STORAGE_KEY, JSON.stringify(months));
-    // También guardar en IndexedDB para que funcione en cualquier contexto (localhost, file://, etc)
-    saveBooksDb(months).catch(err => console.error('Error persisting to IndexedDB:', err));
-    
-    // Sincronizar con Service Worker para persistencia máxima
-    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-        const channel = new MessageChannel();
-        navigator.serviceWorker.controller.postMessage(
-            { type: 'CACHE_DATA', data: months },
-            [channel.port2]
-        );
-    }
+    // Guardar siempre en IndexedDB como fuente de verdad
+    saveBooksDb(months).catch(err => {
+        console.error('Error persisting to IndexedDB:', err);
+        // Fallback a localStorage si IndexedDB falla
+        try {
+            localStorage.setItem(BOOK_STORAGE_KEY, JSON.stringify(months));
+        } catch (e) {
+            console.error('Error persisting to localStorage:', e);
+        }
+    });
 }
 
 function saveMonthData(index) {
@@ -759,6 +835,12 @@ function saveMonthData(index) {
         months[index].texts = Array.from(textAreas).map(t => t.value);
     }
     persistMonths();
+    
+    // Actualizar visibilidad de contenedores vacíos
+    const monthPage = document.getElementById(`month-${index}`);
+    if (monthPage) {
+        hideEmptyMediaContainers(monthPage, months[index]);
+    }
 }
 
 function normalizeMonthData(monthData) {
@@ -766,6 +848,7 @@ function normalizeMonthData(monthData) {
         ...monthData,
         images: Array.isArray(monthData.images) ? monthData.images : ['', '', '', ''],
         imageZooms: Array.isArray(monthData.imageZooms) ? monthData.imageZooms : [],
+        imageDimensions: Array.isArray(monthData.imageDimensions) ? monthData.imageDimensions : [],
         texts: Array.isArray(monthData.texts) ? monthData.texts : (monthData.text ? [monthData.text] : ['']),
         phrase: typeof monthData.phrase === 'string' ? monthData.phrase : '',
         phraseEmoji: typeof monthData.phraseEmoji === 'string' ? monthData.phraseEmoji : '',
@@ -791,6 +874,14 @@ function normalizeMonthData(monthData) {
     }
     normalized.imageZooms = normalized.imageZooms.map((z) => clampNumber(z, 0.6, 2.2));
 
+    // Alinear dimensiones con imágenes
+    if (!Array.isArray(normalized.imageDimensions)) normalized.imageDimensions = [];
+    if (normalized.imageDimensions.length < normalized.images.length) {
+        normalized.imageDimensions = normalized.imageDimensions.concat(Array(normalized.images.length - normalized.imageDimensions.length).fill(null));
+    } else if (normalized.imageDimensions.length > normalized.images.length) {
+        normalized.imageDimensions = normalized.imageDimensions.slice(0, normalized.images.length);
+    }
+
     // Alinear metadatos con canciones
     if (!Array.isArray(normalized.songMeta)) normalized.songMeta = [];
     if (normalized.songMeta.length < normalized.songUrls.length) {
@@ -804,7 +895,8 @@ function normalizeMonthData(monthData) {
             title: typeof safe.title === 'string' ? safe.title : '',
             artist: typeof safe.artist === 'string' ? safe.artist : '',
             cover: typeof safe.cover === 'string' ? safe.cover : '',
-            coverZoom: clampNumber(safe.coverZoom ?? 1, 0.6, 2.2)
+            coverZoom: clampNumber(safe.coverZoom ?? 1, 0.6, 2.2),
+            coverDimensions: (safe.coverDimensions && typeof safe.coverDimensions === 'object') ? safe.coverDimensions : null
         };
     });
 
@@ -1022,6 +1114,33 @@ function startImageResize(monthIndex, imageIndex, event) {
     window.addEventListener('pointerup', onUp, { once: true });
 }
 
+function adjustSongCoverZoom(monthIndex, songIndex, delta, event) {
+    if (event) {
+        event.preventDefault?.();
+        event.stopPropagation?.();
+    }
+    const month = months[monthIndex];
+    if (!month) return;
+    if (!Array.isArray(month.songMeta)) month.songMeta = [];
+    if (!month.songMeta[songIndex]) month.songMeta[songIndex] = {};
+    month.songMeta[songIndex].coverZoom = clampNumber((month.songMeta[songIndex].coverZoom || 1) + delta, 0.6, 2.2);
+    persistMonths();
+    rerenderCurrentMonth();
+}
+
+function adjustVideoZoom(monthIndex, videoIndex, delta, event) {
+    if (event) {
+        event.preventDefault?.();
+        event.stopPropagation?.();
+    }
+    const month = months[monthIndex];
+    if (!month) return;
+    if (!Array.isArray(month.videoZooms)) month.videoZooms = [];
+    month.videoZooms[videoIndex] = clampNumber((month.videoZooms[videoIndex] || 1) + delta, 0.6, 2.2);
+    persistMonths();
+    rerenderCurrentMonth();
+}
+
 function removePhoto(monthIndex, imageIndex, event) {
     if (event) {
         event.preventDefault?.();
@@ -1036,7 +1155,13 @@ function removePhoto(monthIndex, imageIndex, event) {
     if (imageIndex < 0 || imageIndex >= month.images.length) return;
 
     month.images[imageIndex] = '';
-    if (month.images.every((img) => !String(img || '').trim())) {
+    // Limpiar dimensiones asociadas
+    if (Array.isArray(month.imageDimensions)) {
+        month.imageDimensions[imageIndex] = null;
+    }
+    // Para enero 2023: mantener showPhotos = true para mostrar placeholder naranja
+    const isJanuary2023 = month.month === 'Enero' && month.year === 2023;
+    if (!isJanuary2023 && month.images.every((img) => !String(img || '').trim())) {
         month.showPhotos = false;
     }
 
@@ -1096,14 +1221,39 @@ function handleCoverUpload(event, monthIndex, songIndex) {
     const month = months[monthIndex];
     if (!month) return;
     if (!Array.isArray(month.songMeta)) month.songMeta = [];
-    if (!month.songMeta[songIndex]) month.songMeta[songIndex] = { title: '', artist: '', cover: '', coverZoom: 1 };
+    if (!month.songMeta[songIndex]) month.songMeta[songIndex] = { title: '', artist: '', cover: '', coverZoom: 1, coverDimensions: null };
 
     const reader = new FileReader();
     reader.onload = (e) => {
-        month.songMeta[songIndex].cover = String(e.target?.result || '');
+        const dataUrl = String(e.target?.result || '');
+        month.songMeta[songIndex].cover = dataUrl;
         month.songMeta[songIndex].coverZoom = 1;
-        persistMonths();
-        rerenderCurrentMonth();
+        
+        // Detectar dimensiones de la portada
+        const img = new Image();
+        img.onload = () => {
+            const width = img.naturalWidth;
+            const height = img.naturalHeight;
+            const aspectRatio = width / height;
+            
+            month.songMeta[songIndex].coverDimensions = {
+                width,
+                height,
+                aspectRatio
+            };
+            
+            persistMonths();
+            rerenderCurrentMonth();
+            
+            // Aplicar tamaño automático para la música
+            requestAnimationFrame(() => {
+                const spotifyCard = document.querySelector(`.spotify-card[data-month-index="${monthIndex}"][data-song-index="${songIndex}"]`);
+                if (spotifyCard) {
+                    spotifyCard.classList.add('auto-sized');
+                }
+            });
+        };
+        img.src = dataUrl;
     };
     reader.readAsDataURL(file);
 }
@@ -1567,6 +1717,9 @@ function decoratePhotoPlaceholders(monthPage, monthIndex) {
 
         const img = placeholder.querySelector('img');
         if (img) {
+            // Ocultar placeholder cuando hay imagen
+            placeholder.classList.add('hidden-placeholder');
+            
             if (!placeholder.querySelector('.media-resize-handle')) {
                 const handle = document.createElement('div');
                 handle.className = 'media-resize-handle';
@@ -1578,6 +1731,9 @@ function decoratePhotoPlaceholders(monthPage, monthIndex) {
             return;
         }
 
+        // Mostrar placeholder vacío
+        placeholder.classList.remove('hidden-placeholder');
+        
         if (!placeholder.querySelector('.image-empty-icon')) {
             const empty = document.createElement('div');
             empty.className = 'image-empty-icon';
@@ -1617,6 +1773,59 @@ function decorateVideoPreviews(monthPage, monthIndex) {
         handle.addEventListener('pointerdown', (e) => startVideoResize(monthIndex, videoIndex, e));
         wrap.appendChild(handle);
     });
+}
+
+function hideEmptyMediaContainers(monthPage, monthData) {
+    const safeMonth = normalizeMonthData(monthData);
+    
+    // Actualizar placeholders de fotos - marcar como ocultos si tienen imagen
+    const placeholders = monthPage.querySelectorAll('.image-placeholder');
+    placeholders.forEach((placeholder) => {
+        const img = placeholder.querySelector('img.zoomable-img');
+        if (img) {
+            placeholder.classList.add('hidden-placeholder');
+        } else {
+            placeholder.classList.remove('hidden-placeholder');
+        }
+    });
+    
+    // Ocultar contenedor de música si está vacío
+    const musicContainer = monthPage.querySelector('.media-dotted-music');
+    if (musicContainer) {
+        const hasSongs = Array.isArray(safeMonth.songUrls) && safeMonth.songUrls.length > 0;
+        const musicTitle = monthPage.querySelector('.media-dotted-music')?.previousElementSibling;
+        
+        if (!hasSongs) {
+            musicContainer.style.display = 'none';
+            if (musicTitle && musicTitle.classList.contains('section-title')) {
+                musicTitle.style.display = 'none';
+            }
+        } else {
+            musicContainer.style.display = 'flex';
+            if (musicTitle && musicTitle.classList.contains('section-title')) {
+                musicTitle.style.display = 'block';
+            }
+        }
+    }
+    
+    // Ocultar contenedor de videos si está vacío
+    const videoContainer = monthPage.querySelector('.media-dotted-video');
+    if (videoContainer) {
+        const hasVideos = Array.isArray(safeMonth.videoUrls) && safeMonth.videoUrls.some(v => v && String(v).trim().length > 0);
+        const videoTitle = videoContainer.previousElementSibling;
+        
+        if (!hasVideos) {
+            videoContainer.style.display = 'none';
+            if (videoTitle && videoTitle.classList.contains('section-title')) {
+                videoTitle.style.display = 'none';
+            }
+        } else {
+            videoContainer.style.display = 'flex';
+            if (videoTitle && videoTitle.classList.contains('section-title')) {
+                videoTitle.style.display = 'block';
+            }
+        }
+    }
 }
 
 function renderMonths() {
@@ -1685,18 +1894,25 @@ function renderMonths() {
                         <div class="image-gallery ${galleryClass}">
                             ${Array.isArray(safeMonth.images) ? safeMonth.images.map((img, i) => {
                                 const zoom = Array.isArray(safeMonth.imageZooms) ? (safeMonth.imageZooms[i] || 1) : 1;
-                                // Para Enero 2023: solo mostrar imágenes que existan o la primera posición vacía
+                                const dimensions = Array.isArray(safeMonth.imageDimensions) ? safeMonth.imageDimensions[i] : null;
+                                const dimensionStyle = dimensions 
+                                    ? `aspect-ratio: ${dimensions.aspectRatio}; max-width: 600px; width: 100%; height: auto;`
+                                    : '';
+                                // Mostrar imagen directamente sin placeholder para todos los meses
                                     if (isJanuary2023) {
                                         if (img) {
-                                        return `<div class="image-placeholder" onclick="triggerImageUpload(${index}, ${i})"><button class="media-x-btn image-x" type="button" onclick="removePhoto(${index}, ${i}, event)" aria-label="Eliminar foto"><i class="fas fa-trash"></i></button><div class="media-zoom-controls" aria-label="Tamaño foto"><button class="media-zoom-btn" type="button" onclick="adjustPhotoZoom(${index}, ${i}, -0.1, event)" aria-label="Hacer más pequeña"><i class="fas fa-minus"></i></button><button class="media-zoom-btn" type="button" onclick="adjustPhotoZoom(${index}, ${i}, 0.1, event)" aria-label="Hacer más grande"><i class="fas fa-plus"></i></button></div><img class="zoomable-img" src="${img}" style="transform: scale(${zoom});" alt="Imagen ${i + 1}"></div>`;
+                                        return `<div style="position: relative; width: 100%; border-radius: 10px; overflow: visible; background: transparent;" onclick="triggerImageUpload(${index}, ${i})"><button class="media-x-btn image-x" type="button" onclick="removePhoto(${index}, ${i}, event)" aria-label="Eliminar foto"><i class="fas fa-trash"></i></button><img class="zoomable-img" src="${img}" style="transform: scale(${zoom}); width: 100%; height: auto; display: block; border-radius: 10px; object-fit: contain;" alt="Imagen ${i + 1}"><div class="media-resize-handle" onpointerdown="startImageResize(${index}, ${i}, event)" aria-hidden="true" title="Arrastra para ajustar tamaño"></div></div>`;
                                         } else if (i === 0) {
                                             return `<div class="image-placeholder" onclick="triggerImageUpload(${index}, ${i})"><button class="media-x-btn image-x" type="button" onclick="removePhotoSlot(${index}, ${i}, event)" aria-label="Quitar cuadrado"><i class="fas fa-trash"></i></button><i class="fas fa-plus" style="font-size:2rem;color:#FF6B35;"></i></div>`;
                                         }
                                         return '';
                                     } else {
-                                    return `<div class="image-placeholder" onclick="triggerImageUpload(${index}, ${i})">
-                                        ${img ? `<button class="media-x-btn image-x" type="button" onclick="removePhoto(${index}, ${i}, event)" aria-label="Eliminar foto"><i class="fas fa-trash"></i></button><div class="media-zoom-controls" aria-label="Tamaño foto"><button class="media-zoom-btn" type="button" onclick="adjustPhotoZoom(${index}, ${i}, -0.1, event)" aria-label="Hacer más pequeña"><i class="fas fa-minus"></i></button><button class="media-zoom-btn" type="button" onclick="adjustPhotoZoom(${index}, ${i}, 0.1, event)" aria-label="Hacer más grande"><i class="fas fa-plus"></i></button></div><img class="zoomable-img" src="${img}" style="transform: scale(${zoom});" alt="Imagen ${i + 1}">` : `<button class="media-x-btn image-x" type="button" onclick="removePhotoSlot(${index}, ${i}, event)" aria-label="Quitar cuadrado"><i class="fas fa-trash"></i></button><i class="fas fa-plus" style="font-size:2rem;color:#FF6B35;"></i>`}
-                                    </div>`;
+                                    // Todos los demás meses: siempre mostrar placeholder (con o sin imagen)
+                                    if (img) {
+                                        return `<div class="image-placeholder" onclick="triggerImageUpload(${index}, ${i})" style="background: transparent;"><button class="media-x-btn image-x" type="button" onclick="removePhoto(${index}, ${i}, event)" aria-label="Eliminar foto"><i class="fas fa-trash"></i></button><img class="zoomable-img" src="${img}" style="transform: scale(${zoom}); width: 100%; height: auto; display: block; border-radius: 10px; object-fit: contain;" alt="Imagen ${i + 1}"><div class="media-resize-handle" onpointerdown="startImageResize(${index}, ${i}, event)" aria-hidden="true" title="Arrastra para ajustar tamaño"></div></div>`;
+                                    } else {
+                                        return `<div class="image-placeholder" onclick="triggerImageUpload(${index}, ${i})"><button class="media-x-btn image-x" type="button" onclick="removePhotoSlot(${index}, ${i}, event)" aria-label="Quitar cuadrado"><i class="fas fa-trash"></i></button><i class="fas fa-plus" style="font-size:2rem;color:#FF6B35;"></i></div>`;
+                                    }
                                     }
                             }).join('') : ''}
                         </div>
@@ -1714,14 +1930,19 @@ function renderMonths() {
                                     const artist = (String(meta.artist || '').trim()) || (isFixedJulyTrack ? JULY_2023_DEFAULT_TRACK.artist : '');
                                     const coverSrc = (String(meta.cover || '').trim()) || '';
                                     const coverZoom = Number.isFinite(meta.coverZoom) ? meta.coverZoom : 1;
+                                    const coverDimensions = meta.coverDimensions && typeof meta.coverDimensions === 'object' ? meta.coverDimensions : null;
+                                    const coverDimensionStyle = coverDimensions 
+                                        ? `aspect-ratio: ${coverDimensions.aspectRatio}; max-width: 300px; width: 100%; height: auto;`
+                                        : '';
 
                                     return `
                                 <div class="media-item spotify-wrapper">
-                                    <div class="spotify-card" data-autoplay="${si === 0 ? 'true' : 'false'}">
+                                    <div class="spotify-card" data-autoplay="${si === 0 ? 'true' : 'false'}" data-song-index="${si}" data-month-index="${index}">
                                         <button class="media-x-btn spotify-x" type="button" onclick="removeSongEntry(${index}, ${si}, event)" aria-label="Eliminar música"><i class="fas fa-trash"></i></button>
 
-                                        <div class="spotify-cover" onclick="${isFixedJulyTrack ? `triggerAudioUpload(${index}, ${si}, event)` : `triggerSongCoverUpload(${index}, ${si}, event)`}" title="${isFixedJulyTrack ? 'Pulsa para elegir audio' : 'Pulsa para elegir imagen'}">
+                                        <div class="spotify-cover" style="${coverDimensionStyle}" onclick="${isFixedJulyTrack ? `triggerAudioUpload(${index}, ${si}, event)` : `triggerSongCoverUpload(${index}, ${si}, event)`}" title="${isFixedJulyTrack ? 'Pulsa para elegir audio' : 'Pulsa para elegir imagen'}">
                                             ${isFixedJulyTrack ? `<img class="zoomable-img" src="${JULY_2023_DEFAULT_TRACK.coverSrc}" style="transform: scale(${coverZoom});" alt="Portada de ${escapeAttribute(JULY_2023_DEFAULT_TRACK.title)}">` : (coverSrc ? `<img class="zoomable-img" src="${coverSrc}" style="transform: scale(${coverZoom});" alt="Portada">` : `<div class="spotify-cover-placeholder" aria-hidden="true"><img class="spotify-note-img" src="assets/image-upload-bw.svg" alt=""></div>`)}
+                                            ${''}
                                             ${(coverSrc || isFixedJulyTrack) ? `<div class="media-resize-handle" onpointerdown="startSongCoverResize(${index}, ${si}, event)" aria-hidden="true" title="Arrastra para cambiar tamaño"></div>` : ''}
                                         </div>
 
@@ -1791,6 +2012,7 @@ function renderMonths() {
                                             <span>Añadir vídeo</span>
                                         </div>
                                         <button class="media-x-btn" type="button" onclick="removeVideoEntry(${index}, ${vi}, event)" aria-label="Eliminar vídeo" title="Haz clic para eliminar"><i class="fas fa-trash"></i></button>
+                                        ${''}
                                     </div>
                                     ${v ? `<div class="media-preview">${renderMediaPreview(v, 'video')}</div>` : ''}
                                 </div>
@@ -1825,6 +2047,7 @@ function renderMonths() {
         container.appendChild(monthPage);
         decoratePhotoPlaceholders(monthPage, index);
         decorateVideoPreviews(monthPage, index);
+        hideEmptyMediaContainers(monthPage, safeMonth);
         const musicList = monthPage.querySelector('.media-dotted-music');
         const musicTitle = musicList?.previousElementSibling;
         if (musicTitle && musicTitle.classList.contains('section-title')) {
@@ -1910,29 +2133,69 @@ function handleImageUpload(e, monthIndex) {
 
     const reader = new FileReader();
     reader.onload = (event) => {
-        months[monthIndex].images[imageIndex] = event.target.result;
+        const dataUrl = event.target.result;
+        months[monthIndex].images[imageIndex] = dataUrl;
         if (Array.isArray(months[monthIndex].imageZooms)) {
             months[monthIndex].imageZooms[imageIndex] = 1;
         }
-        persistMonths();
-        const animation = monthIndex > currentMonth ? 'forward' : 'backward';
-        renderMonths();
-        showMonth(monthIndex, animation);
+        
+        // Detectar dimensiones de la imagen
+        const img = new Image();
+        img.onload = () => {
+            const width = img.naturalWidth;
+            const height = img.naturalHeight;
+            const aspectRatio = width / height;
+            
+            // Guardar dimensiones
+            if (!Array.isArray(months[monthIndex].imageDimensions)) {
+                months[monthIndex].imageDimensions = [];
+            }
+            months[monthIndex].imageDimensions[imageIndex] = {
+                width,
+                height,
+                aspectRatio
+            };
+            
+            persistMonths();
+            const animation = monthIndex > currentMonth ? 'forward' : 'backward';
+            renderMonths();
+            showMonth(monthIndex, animation);
+            
+            // Aplicar tamaño automático después de renderizar
+            requestAnimationFrame(() => {
+                const monthData = months[monthIndex];
+                if (monthData && monthData.month === 'Enero' && monthData.year === 2023) {
+                    const gallery = document.querySelector(`#month-${monthIndex} .image-gallery.single-image`);
+                    if (gallery) {
+                        gallery.classList.add('auto-sized');
+                    }
+                }
+            });
+        };
+        img.src = dataUrl;
     };
     reader.readAsDataURL(file);
 }
 
 function showMonth(index, direction = 'forward') {
+    // Detener música del mes anterior
+    stopAllAudio();
+    
     const incomingPage = document.getElementById(`month-${index}`);
     if (!incomingPage) return;
 
     const currentActive = document.querySelector('.month-page.active');
     const isBackward = direction === 'backward';
+    
+    // Verificar si es marzo 2023
+    const monthData = months[index];
+    const isMarch2023 = monthData && monthData.month === 'Marzo' && monthData.year === 2023;
 
     if (currentActive && currentActive !== incomingPage) {
         currentActive.querySelectorAll('audio').forEach((audio) => {
             try {
                 audio.pause();
+                audio.currentTime = 0;
             } catch {
                 // ignore
             }
@@ -1958,9 +2221,13 @@ function showMonth(index, direction = 'forward') {
     });
     
     initSpotifyPlayers(incomingPage);
-    autoplaySpotifyPlayersOnPage(incomingPage);
+    
     incomingPage.addEventListener('animationend', () => {
         incomingPage.classList.remove('animating', 'page-in-forward', 'page-in-backward');
+        // Hacer autoplay después de que la animación termine
+        setTimeout(() => {
+            autoplaySpotifyPlayersOnPage(incomingPage);
+        }, 50);
     }, { once: true });
 }
 
@@ -1976,6 +2243,7 @@ function previousMonth() {
             }
         });
         currentMonth -= 1;
+        openedFromIndex = false;
         showMonth(currentMonth, 'backward');
         return;
     }
@@ -1994,6 +2262,7 @@ function nextMonth() {
             }
         });
         currentMonth += 1;
+        openedFromIndex = false;
         showMonth(currentMonth, 'forward');
     }
 }
@@ -2152,6 +2421,7 @@ function goToMonthFromIndex(index) {
     if (indexPage) indexPage.classList.remove('active');
 
     currentMonth = targetIndex;
+    openedFromIndex = true;
     showMonth(currentMonth, 'forward');
 }
 
@@ -2161,6 +2431,7 @@ function startBook() {
     document.getElementById('coverPage').style.display = 'none';
     document.getElementById('bookContainer').classList.add('active');
     currentMonth = 0;
+    openedFromIndex = false;
     showMonth(currentMonth, 'forward');
 }
 
@@ -2741,13 +3012,35 @@ function applyCoverPhoto(photoData) {
     }
 }
 
-function loadCoverPhoto() {
+function saveCoverData() {
+    // Guardar en IndexedDB
     const savedPhoto = localStorage.getItem(COVER_STORAGE_KEY);
+    const savedZoom = localStorage.getItem(COVER_ZOOM_KEY);
+    
+    if (savedPhoto && savedZoom) {
+        // Guardar en IndexedDB como fuente de verdad
+        saveCoverToDb(savedPhoto, savedZoom).catch(err => {
+            console.error('Error saving cover to IndexedDB:', err);
+        });
+        alert('✅ Cambios de portada guardados correctamente.\n\nLos cambios se mantienen incluso si borras el caché del navegador.');
+    } else {
+        alert('⚠️ No hay cambios para guardar.');
+    }
+}
+
+async function loadCoverPhoto() {
+    // Cargar desde IndexedDB primero (fuente de verdad)
+    let coverData = await loadCoverFromDb();
+    
+    let savedPhoto = coverData?.photoData || localStorage.getItem(COVER_STORAGE_KEY);
+    let savedZoom = coverData?.zoomLevel || localStorage.getItem(COVER_ZOOM_KEY);
+    
     const shouldMigrateLegacy = savedPhoto === LEGACY_DEFAULT_COVER_PHOTO_URL;
     const initialPhoto = (!savedPhoto || shouldMigrateLegacy) ? DEFAULT_COVER_PHOTO_URL : savedPhoto;
 
     if (!savedPhoto || shouldMigrateLegacy) {
         localStorage.setItem(COVER_STORAGE_KEY, DEFAULT_COVER_PHOTO_URL);
+        saveCoverToDb(DEFAULT_COVER_PHOTO_URL, '1');
     }
     if (!localStorage.getItem(COVER_ZOOM_KEY)) {
         localStorage.setItem(COVER_ZOOM_KEY, '1');
@@ -2765,6 +3058,8 @@ function loadCoverPhoto() {
             const photoData = e.target.result;
             localStorage.setItem(COVER_STORAGE_KEY, photoData);
             localStorage.setItem(COVER_ZOOM_KEY, '1');
+            // Guardar en IndexedDB automáticamente
+            saveCoverToDb(photoData, '1').catch(err => console.error('Error saving cover:', err));
             applyCoverPhoto(photoData);
         };
         reader.readAsDataURL(file);

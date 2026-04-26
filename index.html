@@ -14,9 +14,12 @@
         <div class="cover-emoji-layer" id="coverEmojiLayer"></div>
 
         <div class="cover-content">
-            <div class="cover-photo-wrap" onclick="document.getElementById('coverPhotoInput').click()" title="Pulsa para subir foto de portada">
+            <div class="cover-photo-wrap" id="coverPhotoWrap" title="Pulsa para subir foto de portada">
                 <img id="coverPhoto" class="cover-photo" alt="Foto de portada">
-                <div class="media-resize-handle cover-resize-handle" onpointerdown="startCoverResize(event)" aria-hidden="true" title="Arrastra para ajustar tamaño"></div>
+                <div id="coverPhotoOverlay" class="cover-photo-overlay">
+                    <h2 id="coverPhotoTitle" class="cover-photo-title">Nuestra Historia De Amor</h2>
+                </div>
+                <div class="cover-resize-handle" onpointerdown="startCoverResize(event)" aria-hidden="true" title="Arrastra para ajustar tamaño"></div>
                 <div id="coverPhotoPlaceholder" class="cover-photo-placeholder">
                     <i class="fas fa-camera"></i>
                     <span>Añadir foto portada</span>
@@ -29,7 +32,10 @@
                 <span id="birthdayTyped" class="birthday-typed-text"></span><span class="birthday-queen" aria-hidden="true">👸🏾</span><span class="typed-cursor" aria-hidden="true">|</span>
             </div>
             <p class="cover-subtitle">Una aventura de dos locos</p>
-            <button class="start-button" onclick="startBook()">Aquí comienza nuestra historia</button>
+            <div class="cover-buttons-wrapper">
+                <button class="start-button" onclick="startBook()">Aquí comienza nuestra historia</button>
+                <button class="save-button" onclick="saveCoverData()" title="Guardar cambios de la portada"><i class="fas fa-save"></i> Guardar</button>
+            </div>
         </div>
     </div>
 
